@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<title>Loud-O-Meter Game</title>
+<!-- A game about staying loud
+	The goal is to keep your volume (and frequency) in the target zones as long as possible to score points.
+		Easy: Volume only
+		Medium: Volume + Frequency
+		Hard: Smaller zones + Volume + Frequency
+		Impossible: Smaller zones + Volume + Frequency + Beat
+	Uses Web Audio API to access microphone input.
+	Vibe coded with Claude and Grok
+	Created by cswert
+	Last modified 6 Oct 2025-->
+<html lang="en">
+<meta charset="UTF-8">
+<style>
+	:root {--w:420px;}
+	body {
+		font-family: system-ui, Roboto, sans-serif;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		background: linear-gradient(180deg,#222,#444);
+		color: #f2f2f2;
+		min-height: 98vh;
+		overflow: hidden;
+		border: 5px solid transparent;
+		transition: border-color 0.2s;
+		box-sizing: border-box;
+		padding: 35px;
+	}
+	body.beat {border-color: #ffeb3b;}
+	h1 {
+		font-size: 32px; 
+		color:#ffeb3b; 
+		text-shadow:1px 1px 4px #000;
+		animation: dance 5s linear infinite;
+		transform-origin: center center;
+		position: relative;
+		bottom: 100px;
+	}
+	#hint {margin: 6px 0 18px; color:#ddd; font-size:14px;}
+	.meter {
+		width: var(--w);
+		height: 40px;
+		background: #111;
+		border-radius: 12px;
+		position: relative;
+		overflow: hidden;
+		box-shadow: 0 0 12px rgba(0,0,0,0.6) inset;
+	}
+	#level {
+		height: 100%;
+		width: 0%;
+		background: linear-gradient(90deg, #76ff03 80%, #ffeb3b 90%, #ff5722 100%);
+		transition: width 0.05s linear;
+	}
+	.zone {
+		position: absolute; top:0; height:100%;
+		background: rgba(0,150,255,0.25);
+		border-left:2px solid rgba(255,255,255,0.6);
+		border-right:2px solid rgba(255,255,255,0.6);
+	}
+	#freqLevel {
+		height: 100%;
+		width: 0%;
+		background: linear-gradient(90deg, #03a9f4 80%, #00bcd4 90%, #009688 100%);
+		transition: width 0.05s linear;
+	}
+	#score, #highscore {font-size: 18px; margin-top: 12px;}
+	#difficulty {
+		margin: 10px 0;
+		display: flex;
+		gap: 10px;
+		justify-content: center;
+	}
+	#difficulty button {
+		padding: 8px 12px;
+		border-radius: 8px;
+		border: none;
+		background: #333;
+		color: #ffeb3b;
+		font-weight: bold;
+		cursor: pointer;
+		transition: background 0.2s;
+		border: solid 1px;
+	}
+	#difficulty button:hover, #difficulty button.selected {background: #ffeb3b; color: #222;}
+	#finalScore {
+		margin-top: 150px;
+		font-size: 48px; 
+		font-weight: bold; 
+		color: #ff5722; 
+		text-shadow: 1px 1px 4px #000; 
+		position: absolute; 
+		z-index: 1;
+		display: none;
+	}
+	@keyframes dance {
+		0% {transform: rotateZ(0deg) scale(0.5) translateX(0px) translateY(150px);}
+		25% {transform: rotateZ(30deg) scale(1.5) translateX(100px)  translateY(0px);}
+		50% {transform: rotateZ(0deg) scale(0.5) translateX(0px)  translateY(150px);}
+		75% {transform: rotateZ(-30deg) scale(1.5) translateX(-100px)  translateY(0px);}
+		100% {transform: rotateZ(0deg) scale(0.5) translateX(0px) translateY(150px);}
+	}
+</style>
+<body>
+	<h1>Loud-O-Meter</h1>
+	<div id="difficulty">
+		<button onclick="setDifficulty('easy')" class="selected">Easy</button>
+		<button onclick="setDifficulty('medium')">Medium</button>
+		<button onclick="setDifficulty('hard')">Hard</button>
+		<button onclick="setDifficulty('impossible')">Impossible</button>
+	</div>
+	<div id="hint">Choose a Difficulty</div>
+	<div id="finalScore"></div>
+	<div id="meter" class="meter"><div id="level"></div><div id="zone" class="zone"></div></div>
+	<div id="freqMeter" class="meter" style="margin-top: 10px; display: none;">
+		<div id="freqLevel"></div><div id="freqZone" class="zone" style="background: rgba(255,193,7,0.25);"></div>
+	</div>
+	<div id="currScore">Score: 0</div>
+	<div id="highscore">High Score: 0</div>
+</body>
+
+<script>
+let audioCtx, analyser, source, gameOver = false, started = false;
+let score = 0, target = {min:0.3, max:0.6}, targetFreq = {min:0.2, max:0.5}, sensitivity = 8, difficulty = 'easy';
+let highscoreEl = document.getElementById('highscore');
+let highScore = 0;
+highscoreEl.innerHTML = 'High Score: ' + highScore;
+
+function setDifficulty(d) {
+	difficulty = d;
+	document.querySelectorAll('#difficulty button').forEach(btn => btn.classList.remove('selected'));
+	event.target.classList.add('selected');
+	start();
+}
+
+let zoneTimeoutId;
+function randomZones() {
+	target.min = Math.random()*0.7;
+	let zoneSize = ['hard','impossible'].includes(difficulty) ? 0.2 : 0.33;
+	target.max = target.min + zoneSize;
+	if (target.max>1) target.max=1;
+	zone.style.left = (target.min*100)+'%';
+	zone.style.width = ((target.max-target.min)*100)+'%';
+
+	targetFreq.min = Math.random()*0.7;
+	targetFreq.max = targetFreq.min + zoneSize;
+	if (targetFreq.max>1) targetFreq.max=1;
+	freqZone.style.left = (targetFreq.min*100)+'%';
+	freqZone.style.width = ((targetFreq.max-targetFreq.min)*100)+'%';
+	
+	zoneTimeoutId = setTimeout(randomZones, 1000 + Math.random()*2000);
+}
+
+function mainLoop() {
+	if (!analyser) return;
+	let buf = new Float32Array(analyser.fftSize);
+	analyser.getFloatTimeDomainData(buf);
+	let rms = Math.sqrt(buf.reduce((s,v) => s + v*v, 0) / buf.length);
+	let bufferLength = analyser.frequencyBinCount;
+	let dataArray = new Uint8Array(bufferLength);
+	analyser.getByteFrequencyData(dataArray);
+	let maxVal = Math.max(...dataArray);
+	let maxIndex = dataArray.indexOf(maxVal);
+	let nyquist = audioCtx.sampleRate / 2;
+	let freq = maxVal > 20 ? Math.round((maxIndex * nyquist) / bufferLength) : 0;
+	let scaled = Math.max(0, Math.min(1, rms * sensitivity)); 
+	let freqScaled = freq > 0 ? Math.max(0, Math.min(1, (freq - 100) / 1900)) : 0;
+	
+	if (!gameOver) {
+		level.style.width = (scaled*100)+'%';
+		if (difficulty !== 'easy') freqLevel.style.width = (freqScaled*100)+'%';
+		if (!started && rms > 0.01) {
+			started = true;
+			hint.innerHTML = difficulty === 'easy' ? 'Game started — keep volume up!' : 'Game started — keep volume and frequency in the zones!';
+		}
+		if (started && rms < 0.001) {endGame(); return;}
+		let inZone = scaled > target.min && scaled < target.max;
+		if (difficulty !== 'easy') inZone = inZone && freqScaled > targetFreq.min && freqScaled < targetFreq.max;
+		if (difficulty === 'impossible') inZone = inZone && beatActive;
+		if (started && inZone) {
+			let points = 1;
+			if (scaled > 0.8) points = 5;
+			else if (scaled > 0.6) points = 3;
+			score += points;
+			currScore.innerHTML = 'Score: ' + score;
+		}
+	}
+}
+
+let intervalId;
+async function start() {
+	if (!audioCtx || audioCtx.state === 'closed') {
+		audioCtx = new (window.AudioContext||window.webkitAudioContext)();
+		let stream = await navigator.mediaDevices.getUserMedia({audio:true});
+		source = audioCtx.createMediaStreamSource(stream);
+		analyser = audioCtx.createAnalyser();
+		analyser.fftSize = 1024;
+		source.connect(analyser);
+	}
+	if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+	resetGame();
+	clearTimeout(zoneTimeoutId);
+	randomZones();
+	freqMeter.style.display = difficulty !== 'easy' ? 'block' : 'none';
+	clearInterval(intervalId);
+	intervalId = setInterval(mainLoop, 16);
+	clearInterval(beatIntervalId);
+	beatIntervalId = setInterval(() => {
+		beatActive = true;
+		document.body.classList.add('beat');
+		setTimeout(() => {
+			beatActive = false;
+			document.body.classList.remove('beat');
+		}, 200);
+	}, 1000);
+}
+
+function resetGame() {
+	score = 0;
+	gameOver = false;
+	started = false;
+	currScore.innerHTML = 'Score: 0';
+	currScore.style.display = 'block';
+	finalScore.style.display = 'none';
+	hint.innerHTML = 'Say something to start — motto: louder = funnier';
+	level.style.width = '0%';
+	freqLevel.style.width = '0%';
+}
+
+let beatIntervalId;
+let beatActive = false;
+function endGame() {
+	gameOver = true;
+	hint.innerHTML = 'Game over';
+	clearTimeout(zoneTimeoutId);
+	currScore.style.display = 'none';
+	finalScore.innerHTML = 'Final Score: ' + score;
+	finalScore.style.display = 'block';
+	if (score > highScore) {
+		highScore = score;
+		highscoreEl.innerHTML = 'High Score: ' + highScore;
+	}
+}
+</script>
+</html>
