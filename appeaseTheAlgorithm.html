@@ -1,579 +1,490 @@
 <!DOCTYPE html>
 <html lang="en">
-    <!-- A game about guessing video parameters to get the most views
-     Created by Casey S. | 27 Sep 2025 -->
+	<!-- A game about guessing video parameters to get the most views
+	Enter a search term to generate a random seed
+		Easy: Title (length) + Upload Time + Duration (min)
+		Medium: + Duration (sec) + Audience Age + Audience Gender
+		Hard: + Sponsor Length + Number of Ad Breaks
+		Impossible: + Self Plugs
+	Vibe coded with Claude, and Grok
+	Created by cswert
+	Last modified 9 Oct 2025 -->
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Appease the Algorithm</title>
-    <style>
-        body { font-family: "Roboto","Arial",sans-serif; margin: 0; padding: 0; background-color: #f9f9f9; }
-        header { background-color: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.1); display: flex; align-items: center; padding: 10px; }
-        header img { height: 40px; margin-right: 20px; }
-        header input[type="text"] { padding: 8px; border: 1px solid #ccc; border-radius: 4px; margin-left: 20%; width: 33%; }
-        header button { padding: 8px 16px; background-color: #ddd; color: white; border: none; border-radius: 4px; cursor: pointer; position: relative; left: -46px; transform: scale(.9); }
-        main { display: flex; padding: 20px; margin-left: 50px; }
-        section { flex: 3; margin-right: 20px; }
-        .video-player { background-color: #000; width: 100%; aspect-ratio: 16 / 9; display: flex; flex-direction: column; justify-content: center; align-items: center; color: white; position: relative; border-radius: 12px; padding: 20px; box-sizing: border-box; }
-        .inputs { display: flex; flex-direction: row; flex-wrap: wrap; gap: 15px; width: 100%; }
-        .inputs div { display: flex; flex-direction: row; flex-wrap: wrap; justify-content: space-around; align-items: baseline; gap: 10px; }
-        .inputs label { color: white; font-weight: bold; margin-bottom: 5px; }
-        .inputs input, .inputs select { padding: 8px; background-color: rgba(255,255,255,0.1); border: 1px solid #555; border-radius: 4px; color: white; font-size: 14px; box-sizing: border-box; }
-        .inputs input:focus, .inputs select:focus { outline: none; border-color: #ff0000; }
-        .upload-btn { margin: 20px auto 0 42%; padding: 15px 30px; background-color: #ff0000; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 18px; font-weight: bold; transition: background-color 0.2s; }
-        .upload-btn:hover { background-color: #cc0000; }
-        .graph { background-color: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        canvas { width: 100%; height: 300px; }
-        aside { flex: 1; background-color: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); width:33%; }
-        .recommendation { display: flex; margin-bottom: 10px; padding: 10px; }
-        .recommendation img { width: 100px; aspect-ratio: 16 / 9; margin-right: 10px; border-radius: 8px; }
-        .recommendation div { flex: 1; }
-        .recommendation h4 { margin: 0; font-size: 14px; }
-        .recommendation p { margin: 5px 0; font-size: 12px; color: #666; }
-        .video-description { background-color: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); padding: 20px; margin-top: 20px; }
-        .video-description h3 { margin-top: 0; }
-        .video-description p { margin: 5px 0; }
-        #comments { margin-top: 20px; border-top: 1px solid #eee; padding-top: 10px; }
-        .comment { margin-bottom: 8px; padding: 8px; background-color: #f9f9f9; border-radius: 4px; font-size: 14px; }
-        .btn { background-color: #ddd; border-radius: 20px; border: none; font-size: 20px; padding: 10px; padding-left: 15px; padding-right: 15px; }
-        select option { background-color: white; color: black; }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Appease the Algorithm</title>
+<style>
+	body { font-family: "Roboto","Arial",sans-serif; margin: 0; padding: 0; background-color: #f9f9f9;}
+	header { background-color: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.1); display: flex; align-items: center; padding: 10px;}
+	header img { height: 40px; margin-right: 20px;}
+	header input[type="text"] { padding: 8px; border: 1px solid #ccc; border-radius: 4px; margin-left: 20%; width: 33%;}
+	header button {
+		padding: 8px 16px;
+		background-color: #ddd;
+		color: white;
+		border: none;
+		border-radius: 4px;
+		cursor: pointer;
+		position: relative;
+		left: -46px;
+		transform: scale(.9);
+	}
+	main { display: flex; padding: 20px; margin-left: 50px;}
+	section { flex: 3; margin-right: 20px;}
+	.video-player {
+		background-color: #000; 
+		width: 100%; 
+		aspect-ratio: 16 / 9; 
+		display: flex; 
+		flex-direction: column; 
+		justify-content: center; 
+		align-items: center; 
+		color: white; 
+		position: relative; 
+		border-radius: 12px; 
+		padding: 20px; 
+		box-sizing: border-box;
+	}
+	.inputs { display: flex; flex-direction: row; flex-wrap: wrap; gap: 15px; width: 100%;}
+	.inputs div { display: flex; flex-direction: row; flex-wrap: wrap; justify-content: space-around; align-items: baseline; gap: 10px;}
+	.inputs label { color: white; font-weight: bold; margin-bottom: 5px;}
+	.inputs input, .inputs select {
+		padding: 8px;
+		background-color: rgba(255,255,255,0.1);
+		border: 1px solid #555;
+		border-radius: 4px;
+		color: white;
+		font-size: 14px;
+		box-sizing: border-box;
+	}
+	.inputs input:focus, .inputs select:focus { outline: none; border-color: #ff0000;}
+	.upload-btn {
+		margin: 20px auto 0 42%;
+		padding: 15px 30px;
+		background-color: #ff0000;
+		color: white;
+		border: none;
+		border-radius: 4px;
+		cursor: pointer;
+		font-size: 18px;
+		font-weight: bold;
+		transition: background-color 0.2s;
+	}
+	.upload-btn:hover { background-color: #cc0000;}
+	.graph { background-color: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);}
+	canvas { width: 100%; height: 300px;}
+	aside { flex: 1; background-color: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); width:33%;}
+	.recommendation { display: flex; margin-bottom: 10px; padding: 10px;}
+	.recommendation img { width: 100px; aspect-ratio: 16 / 9; margin-right: 10px; border-radius: 8px;}
+	.recommendation div { flex: 1;}
+	.recommendation h4 { margin: 0; font-size: 14px;}
+	.recommendation p { margin: 5px 0; font-size: 12px; color: #666;}
+	.video-description { background-color: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); padding: 20px; margin-top: 20px;}
+	.video-description h3 { margin-top: 0;}
+	.video-description p { margin: 5px 0;}
+	#comments { margin-top: 20px; border-top: 1px solid #eee; padding-top: 10px;}
+	.comment { margin-bottom: 8px; padding: 8px; background-color: #f9f9f9; border-radius: 4px; font-size: 14px;}
+	.btn { background-color: #ddd; border-radius: 20px; border: none; font-size: 20px; padding: 10px; padding-left: 15px; padding-right: 15px;}
+	select option { background-color: white; color: black;}
+</style>
 </head>
 <body>
-    <header>
-        <div style="width:70px; height:40px; background-color:#f00; border-radius:12px; position:relative; display:inline-block; margin-right:20px;">
-            <div style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%) scale(1.5); width:0; height:0; 
-                border-left:8px solid white; border-top:5px solid transparent; border-bottom:5px solid transparent;"></div>
-        </div>
-        <input type="text" id="seedInput" value="Appease the Algorithm">
-        <button onclick="newGame(true)">Ｑ</button>
-    </header>
-    <main>
-        <section>
-            <div class="video-player">
-                <div id="controls">
-                    <div class="inputs">
-                        <div style="flex-basis: 100%; justify-content: center;">
-                            <label>Difficulty:</label>
-                            <select id="difficulty" onchange="updateInputs()">
-                                <option value="easy">Easy</option>
-                                <option value="medium">Medium</option>
-                                <option value="hard">Hard</option>
-                                <option value="impossible">Impossible</option>
-                            </select>
-                        </div>
-                        <div id="inputFields"></div>
-                    </div>
-                    <button class="upload-btn" onclick="upload()">Upload</button>
-                </div>
-                <div id="graphContainer" style="display:none;">
-                    <div class="graph">
-                        <h3>Views Over Time</h3>
-                        <canvas id="viewsChart"></canvas>
-                    </div>
-                    <button id="nextBtn" class="upload-btn" style="display:none; margin-left: 30%;" onclick="nextVideo()">Upload Next Video</button>
-                </div>
-            </div>
-            <h3 id="descTitle"></h3>
-            <div style="display:flex; align-items:center; flex-wrap: wrap;">
-                <div id="avatar" style="width:40px; height:40px; background-color:#ccc; border-radius:20px; display:inline-block; vertical-align:middle; margin-right:10px;"></div>
-                <div style="margin-left:10px; margin-right:20px;">
-                    <div>xX_batManRuleZ_xX</div>
-                    <div style="color:#666;">1.2k subscribers</div>
-                </div>
-                <button class="btn" style="background-color: white; border: 1px solid #ccc; margin-right:10px;">Join</button>
-                <button class="btn" style="margin-right:70px;">🕭 &emsp; V</button>
-                <button class="btn" style="margin-right:10px;">🖒&emsp;|&emsp;🖓</button>
-                <button class="btn" style="margin-right:10px;">↗ Share</button>
-                <button class="btn" style="margin-right:10px;">✦ Ask</button>
-                <button class="btn" style="margin-right:10px;">⤓ Download</button>
-                <button class="btn">...</button>
-            </div>
-            <div id="videoDescription" class="video-description" style="display:none;">
-                <p><span id="descViews"></span> views <span id="descDate"></span></p>
-                <div id="comments">
-                    <h4>Comments</h4>
-                </div>
-            </div>
-        </section>
-        <aside>
-            <h3>Recommended Videos</h3>
-            <div id="recommendations"> </div>
-        </aside>
-    </main>
-    <script>
-        let targets = {};
-        let history = [
-            { title: "I Spent 50 Hours in VR and This Happened", views: 1234567, difficulty: "hard", emoji: "🤯", timestamp: Date.now() - 86400000 * 1, color: "hsl(0, 100%, 50%)" },
-            { title: "Why Everyone Stopped Talking About Web3", views: 892341, difficulty: "medium", emoji: "🚫", timestamp: Date.now() - 86400000 * 2, color: "hsl(30, 100%, 50%)" },
-            { title: "Building a PC in 2024: Complete Guide", views: 567890, difficulty: "easy", emoji: "💻", timestamp: Date.now() - 86400000 * 3, color: "hsl(60, 100%, 50%)" },
-            { title: "The Rise and Fall of Cryptocurrency", views: 445233, difficulty: "medium", emoji: "📉", timestamp: Date.now() - 86400000 * 4, color: "hsl(90, 100%, 50%)" },
-            { title: "Learning Python in 60 Minutes", views: 334521, difficulty: "hard", emoji: "⏱️", timestamp: Date.now() - 86400000 * 5, color: "hsl(120, 100%, 50%)" },
-            { title: "Why I Quit My Tech Job", views: 223456, difficulty: "easy", emoji: "👋", timestamp: Date.now() - 86400000 * 6, color: "hsl(150, 100%, 50%)" },
-            { title: "Reviewing Every iPhone Ever Made", views: 156789, difficulty: "hard", emoji: "📱", timestamp: Date.now() - 86400000 * 7, color: "hsl(180, 100%, 50%)" },
-            { title: "Making $10k with AI Art", views: 98765, difficulty: "medium", emoji: "💰", timestamp: Date.now() - 86400000 * 8, color: "hsl(210, 100%, 50%)" },
-            { title: "The Truth About Gaming Laptops", views: 67432, difficulty: "easy", emoji: "😈", timestamp: Date.now() - 86400000 * 9, color: "hsl(240, 100%, 50%)" },
-            { title: "Day in the Life of a Software Engineer", views: 34567, difficulty: "medium", emoji: "☕", timestamp: Date.now() - 86400000 * 10, color: "hsl(270, 100%, 50%)" }
-        ];
-        const fakeUsers = ["ViralVoodoo", "ClickBaiticus_Maximus", "Alg0rithmOverlord", "QuantumQuokka", "PixelPunk", "MemeMancer", "SirClicksALot", "Ne0nNoodleNinja", "EdgeLordEcho", "SnackableSage", 
-            "FYPhealer", "TinfoilTactician", "EchoChamberlain",  "ButterflyBanshee", "DataDervish", "CryptoCultivator", "VidVandal", "Spamurai", "SushiSmasher", "lil_4lg0r1thm" ];
-        const positiveComments = ["Amazing video! Subscribed!", "This is gold! Keep it up!", "Loved every second of it!", "Best content I've seen today!", "You're a genius!", "Can't wait for more!", 
-        "This changed my perspective!", "Hilarious and informative!", "Top tier quality!", "Instant like and share!"];
-        const neutralComments = ["Not bad", "Interesting", "Okay video", "Meh", "Could be better", "Average", "Decent", "Nothing special", "It's alright", "Mixed feelings", "Lowkey good"];
-        const negativeComments = ["Boring...", "Waste of time", "Unsubscribed", "Fell asleep halfway", "Not impressed", "Skip this", "Disappointed", "Clickbait", "Poor quality", "Don't recommend"];
-        let randomFunc = () => Math.random();
-        let lastInputs = null;
+<header>
+	<div style="width:70px; height:40px; background-color:#f00; border-radius:12px; position:relative; display:inline-block; margin-right:20px;">
+		<div style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%) scale(1.5); width:0; height:0; 
+			border-left:8px solid white; border-top:5px solid transparent; border-bottom:5px solid transparent;"></div>
+	</div>
+	<input type="text" id="seedInput" value="Appease the Algorithm">
+	<button onclick="newGame(true)">Ｑ</button>
+</header>
+<main>
+	<section>
+		<div class="video-player">
+			<div id="controls">
+				<div class="inputs">
+					<div style="flex-basis: 100%; justify-content: center;">
+						<label>Difficulty:</label>
+						<select id="difficulty" onchange="updateInputs()">
+							<option value="easy">Easy</option>
+							<option value="medium">Medium</option>
+							<option value="hard">Hard</option>
+							<option value="impossible">Impossible</option>
+						</select>
+					</div>
+					<div id="inputFields"></div>
+				</div>
+				<button class="upload-btn" onclick="upload()">Upload</button>
+			</div>
+			<div id="graphContainer" style="display:none;">
+				<div class="graph">
+					<h3>Views Over Time</h3>
+					<canvas id="viewsChart"></canvas>
+				</div>
+				<button id="nextBtn" class="upload-btn" style="display:none; margin-left: 30%;" onclick="nextVideo()">Upload Next Video</button>
+			</div>
+		</div>
+		<h3 id="descTitle"></h3>
+		<div style="display:flex; align-items:center; flex-wrap: wrap;">
+			<div id="avatar" style="width:40px; height:40px; background-color:#ccc; border-radius:20px; display:inline-block; vertical-align:middle; margin-right:10px;"></div>
+			<div style="margin-left:10px; margin-right:20px;">
+				<div>xX_batManRuleZ_xX</div>
+				<div style="color:#666;">1.2k subscribers</div>
+			</div>
+			<button class="btn" style="background-color: white; border: 1px solid #ccc; margin-right:10px;">Join</button>
+			<button class="btn" style="margin-right:70px;">🕭 &emsp; V</button>
+			<button class="btn" style="margin-right:10px;">🖒&emsp;|&emsp;🖓</button>
+			<button class="btn" style="margin-right:10px;">↗ Share</button>
+			<button class="btn" style="margin-right:10px;">✦ Ask</button>
+			<button class="btn" style="margin-right:10px;">⤓ Download</button>
+			<button class="btn">...</button>
+		</div>
+		<div id="videoDescription" class="video-description" style="display:none;">
+			<p><span id="descViews"></span> views <span id="descDate"></span></p>
+			<div id="comments">
+				<h4>Comments</h4>
+			</div>
+		</div>
+	</section>
+	<aside>
+		<h3>Recommended Videos</h3>
+		<div id="recommendations"> </div>
+	</aside>
+</main>
+<script>
+	let targets = {};
+	let history = [
+		{ title: "I Spent 50 Hours in VR and This Happened", views: 1234567, difficulty: "hard", emoji: "🤯", timestamp: Date.now() - 86400000 * 1, color: "hsl(0, 100%, 50%)"},
+		{ title: "Why Everyone Stopped Talking About Web3", views: 892341, difficulty: "medium", emoji: "🚫", timestamp: Date.now() - 86400000 * 2, color: "hsl(30, 100%, 50%)"},
+		{ title: "Building a PC in 2024: Complete Guide", views: 567890, difficulty: "easy", emoji: "💻", timestamp: Date.now() - 86400000 * 3, color: "hsl(60, 100%, 50%)"},
+		{ title: "The Rise and Fall of Cryptocurrency", views: 445233, difficulty: "medium", emoji: "📉", timestamp: Date.now() - 86400000 * 4, color: "hsl(90, 100%, 50%)"},
+		{ title: "Learning Python in 60 Minutes", views: 334521, difficulty: "hard", emoji: "⏱️", timestamp: Date.now() - 86400000 * 5, color: "hsl(120, 100%, 50%)"},
+		{ title: "Why I Quit My Tech Job", views: 223456, difficulty: "easy", emoji: "👋", timestamp: Date.now() - 86400000 * 6, color: "hsl(150, 100%, 50%)"},
+		{ title: "Reviewing Every iPhone Ever Made", views: 156789, difficulty: "hard", emoji: "📱", timestamp: Date.now() - 86400000 * 7, color: "hsl(180, 100%, 50%)"},
+		{ title: "Making $10k with AI Art", views: 98765, difficulty: "medium", emoji: "💰", timestamp: Date.now() - 86400000 * 8, color: "hsl(210, 100%, 50%)"},
+		{ title: "The Truth About Gaming Laptops", views: 67432, difficulty: "easy", emoji: "😈", timestamp: Date.now() - 86400000 * 9, color: "hsl(240, 100%, 50%)"},
+		{ title: "Day in the Life of a Software Engineer", views: 34567, difficulty: "medium", emoji: "☕", timestamp: Date.now() - 86400000 * 10, color: "hsl(270, 100%, 50%)"}
+	];
+	let fakeUsers = ["ViralVoodoo", "ClickBaiticus_Maximus", "Alg0rithmOverlord", "QuantumQuokka", "PixelPunk", "MemeMancer", "SirClicksALot", "Ne0nNoodleNinja", "EdgeLordEcho", "SnackableSage", 
+		"FYPhealer", "TinfoilTactician", "EchoChamberlain",  "ButterflyBanshee", "DataDervish", "CryptoCultivator", "VidVandal", "Spamurai", "SushiSmasher", "lil_4lg0r1thm" ];
+	let positiveComments = ["Amazing video! Subscribed!", "This is gold! Keep it up!", "Loved every second of it!", "Best content I've seen today!", "You're a genius!", "Can't wait for more!", 
+		"This changed my perspective!", "Hilarious and informative!", "Top tier quality!", "Instant like and share!"];
+	let neutralComments = ["Not bad", "Interesting", "Okay video", "Meh", "Could be better", "Average", "Decent", "Nothing special", "It's alright", "Mixed feelings", "Lowkey good","mid"];
+	let negativeComments = ["Boring...", "Waste of time", "Unsubscribed", "Fell asleep halfway", "Not impressed", "Skip this", "Disappointed", "Clickbait", "Poor quality", "Don't recommend"];
+	let randomFunc = () => Math.random();
+	let lastInputs = null;
 
-        function hashString(str) {
-            let hash = 0;
-            for (let i = 0; i < str.length; i++) {
-                const char = str.charCodeAt(i);
-                hash = ((hash << 5) - hash) + char;
-                hash = hash & hash;
-            }
-            return Math.abs(hash);
-        }
+	function hashString(str) {
+		let hash = 0;
+		for (let i = 0; i < str.length; i++) {
+			let char = str.charCodeAt(i);
+			hash = ((hash << 5) - hash) + char;
+			hash = hash & hash;
+		}
+		return Math.abs(hash);
+	}
 
-        function newGame(updateSeed = true) {
-            if (updateSeed) {
-                const seed = document.getElementById('seedInput').value;
-                if (seed && seed !== 'Appease the Algorithm') {
-                    const seedNum = hashString(seed);
-                    let x = seedNum;
-                    randomFunc = () => {
-                        x = (x * 9301 + 49297) % 233280;
-                        return x / 233280;
-                    };
-                } else {
-                    randomFunc = () => Math.random();
-                }
-                targets = generateTargets();
-                lastInputs = null;
-            }
-            updateInputs();
-            clearGraph();
-            loadRecommendations();
-            document.getElementById('controls').style.display = 'block';
-            document.getElementById('graphContainer').style.display = 'none';
-            document.getElementById('nextBtn').style.display = 'none';
-            document.getElementById('videoDescription').style.display = 'block';
-            document.getElementById('descTitle').textContent = 'Your Upcoming Video';
-            document.getElementById('descViews').textContent = '0';
-            document.getElementById('descDate').textContent = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-            document.getElementById('comments').innerHTML = '<h4>Comments</h4>';
-        }
+	function atLeast(diff, level) {
+		let order = ['easy', 'medium', 'hard', 'impossible'];
+		return order.indexOf(diff) >= order.indexOf(level);
+	}
 
-        function nextVideo() {
-            newGame(false);
-            if (lastInputs) {
-                document.getElementById('title').value = lastInputs.title || '';
-                document.getElementById('uploadTime').value = lastInputs.uploadTime || '';
-                document.getElementById('durationMin').value = lastInputs.durationMin || '';
-                if (lastInputs.durationSec !== undefined) document.getElementById('durationSec').value = lastInputs.durationSec;
-                if (lastInputs.audienceAge !== undefined) document.getElementById('audienceAge').value = lastInputs.audienceAge;
-                if (lastInputs.audienceGender !== undefined) document.getElementById('audienceGender').value = lastInputs.audienceGender;
-                if (lastInputs.sponsorSec !== undefined) document.getElementById('sponsorSec').value = lastInputs.sponsorSec;
-                if (lastInputs.adBreaks !== undefined) document.getElementById('adBreaks').value = lastInputs.adBreaks;
-                if (lastInputs.durationSec !== undefined) document.getElementById('durationSec').value = lastInputs.durationSec;
-                if (lastInputs.audienceAge !== undefined) document.getElementById('audienceAge').value = lastInputs.audienceAge;
-                if (lastInputs.audienceGender !== undefined) document.getElementById('audienceGender').value = lastInputs.audienceGender;
-                if (lastInputs.sponsorSec !== undefined) document.getElementById('sponsorSec').value = lastInputs.sponsorSec;
-                if (lastInputs.adBreaks !== undefined) document.getElementById('adBreaks').value = lastInputs.adBreaks;
-            }
-        }
+	function newGame(updateSeed = true) {
+		if (updateSeed) {
+			let seed = seedInput.value;
+			if (seed && seed !== 'Appease the Algorithm') {
+				let seedNum = hashString(seed);
+				let x = seedNum;
+				randomFunc = () => {
+					x = (x * 9301 + 49297) % 233280;
+					return x / 233280;
+				};
+			}
+			else randomFunc = () => Math.random();
+			let options = ['merch','twitch','discord','secondchannel','instagram','tiktok','linkedin','twitter','patreon'];
+			targets = {
+				durationMin: Math.floor(randomFunc() * 60) + 1,
+				uploadTime: Math.floor(randomFunc() * 96),
+				titleLength: Math.floor(randomFunc() * 100) + 1,
+				durationSec: Math.floor(randomFunc() * 60),
+				audienceAge: Math.floor(randomFunc() * 5),
+				audienceGender: Math.floor(randomFunc() * 3),
+				sponsorSec: Math.floor(randomFunc() * 61),
+				adBreaks: Math.floor(randomFunc() * 11),
+				selfPlug: shuffle(options.slice()).slice(0, Math.floor(randomFunc() * 4) + 1)
+			};
+			lastInputs = null;
+		}
+		updateInputs();
+		let canvas = viewsChart;
+		let ctx = canvas.getContext('2d');
+		ctx.clearRect(0, 0, canvas.width, canvas.height);
+		loadRecommendations();
+		controls.style.display = 'block';
+		graphContainer.style.display = 'none';
+		nextBtn.style.display = 'none';
+		videoDescription.style.display = 'block';
+		descTitle.textContent = 'Your Upcoming Video';
+		descViews.textContent = '0';
+		descDate.textContent = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric'});
+		comments.innerHTML = '<h4>Comments</h4>';
+	}
 
-        function generateTargets() {
-            const t = {
-                durationMin: Math.floor(randomFunc() * 60) + 1,
-                uploadTime: Math.floor(randomFunc() * 96), // 0:00 to 23:45 in 15 min steps
-                titleLength: Math.floor(randomFunc() * 100) + 1,
-                durationSec: Math.floor(randomFunc() * 60),
-                audienceAge: Math.floor(randomFunc() * 5), // 0-4 for age groups
-                audienceGender: Math.floor(randomFunc() * 3), // 0:male,1:female,2:both
-                sponsorSec: Math.floor(randomFunc() * 61),
-                adBreaks: Math.floor(randomFunc() * 11),
-                selfPlug: (() => {
-                    const options = ['merch','twitch','discord','secondchannel','instagram','tiktok','linkedin','twitter','patreon'];
-                    const num = Math.floor(randomFunc() * 4) + 1;
-                    const selected = [];
-                    for (let i = 0; i < num; i++) {
-                        selected.push(options[Math.floor(randomFunc() * options.length)]);
-                    }
-                    return [...new Set(selected)];
-                })()
-            };
-            console.log('Optimal settings:', t);
-            return t;
-        }
+	function nextVideo() {
+		newGame(false);
+		if (lastInputs) {
+			Object.keys(lastInputs).forEach(key => {
+				if (lastInputs[key] !== undefined && window[key]) window[key].value = lastInputs[key];
+			});
+		}
+	}
 
-        function updateInputs() {
-            const diff = document.getElementById('difficulty').value;
-            const fields = document.getElementById('inputFields');
-            fields.style.width = "100%";
-            fields.innerHTML = '';
+	function shuffle(array) {
+		for (let i = array.length - 1; i > 0; i--) {
+			let j = Math.floor(randomFunc() * (i + 1));
+			[array[i], array[j]] = [array[j], array[i]];
+		}
+		return array;
+	}
 
-            // Easy
-            fields.innerHTML += `
-                <div style="width: 100%;">
-                    <label>Title:</label>
-                    <input type="text" id="title" placeholder="Enter title" style="width: 85%;">
-                </div>
-                <div>
-                    <label>Upload Time:</label>
-                    <select id="uploadTime">${generateTimeOptions()}</select>
-                </div>
-                <div>
-                    <label>Duration (min):</label>
-                    <input type="number" id="durationMin" min="1" max="60" placeholder="1-60">
-                </div>
-            `;
+	function updateInputs() {
+		let diff = difficulty.value;
+		let fields = inputFields;
+		fields.style.width = "100%";
+		fields.innerHTML = '';
+		let allFields = [
+			{id: 'title', label: 'Title:', html: '<input type="text" id="title" placeholder="Enter title" style="width: 85%;">', level: 'easy'},
+			{id: 'uploadTime', label: 'Upload Time:', html: `<select id="uploadTime">${generateTimeOptions()}</select>`, level: 'easy'},
+			{id: 'durationMin', label: 'Duration (min):', html: '<input type="number" id="durationMin" min="1" max="60" placeholder="1-60">', level: 'easy'},
+			{id: 'durationSec', label: 'Duration (sec):', html: '<input type="number" id="durationSec" min="0" max="59" placeholder="0-59">', level: 'medium'},
+			{id: 'audienceAge', label: 'Audience Age:', html: `<select id="audienceAge"><option value="0">13-17</option><option value="1">18-29</option><option value="2">30-39</option><option value="3">40-49</option><option value="4">50+</option></select>`, level: 'medium'},
+			{id: 'audienceGender', label: 'Audience Gender:', html: `<select id="audienceGender"><option value="0">Male</option><option value="1">Female</option><option value="2">Both</option></select>`, level: 'medium'},
+			{id: 'sponsorSec', label: 'Sponsor Length (seconds):', html: '<input type="number" id="sponsorSec" min="0" max="60" placeholder="0-60">', level: 'hard'},
+			{id: 'adBreaks', label: 'Number of Ad Breaks:', html: '<input type="number" id="adBreaks" min="0" max="10" placeholder="0-10">', level: 'hard'}
+		];
+		allFields.filter(f => atLeast(diff, f.level)).forEach(f => {
+			fields.innerHTML += `<div${f.id==='title' ? ' style="width: 100%;"' : ''}><label>${f.label}</label>${f.html}</div>`;
+		});
+		if (diff === 'impossible') {
+			let plugs = ['merch','twitch','discord','secondchannel','instagram','tiktok','linkedin','twitter','patreon'];
+			fields.innerHTML += `<br><br><br><div><label>Self Plug:</label><div style="display: flex; flex-wrap: wrap; flex-direction: row; justify-content: center; gap: 0px 10px;">${plugs.map(p => `<label><input type="checkbox" id="${p}"> ${p.charAt(0).toUpperCase() + p.slice(1)}</label><br>`).join('')}</div></div>`;
+		}
+	}
 
-            if (diff === 'medium' || diff === 'hard' || diff === 'impossible') {
-                fields.innerHTML += `
-                    <div>
-                        <label>Duration (sec):</label>
-                        <input type="number" id="durationSec" min="0" max="59" placeholder="0-59">
-                    </div>
-                    <div>
-                        <label>Audience Age:</label>
-                        <select id="audienceAge">
-                            <option value="0">13-17</option>
-                            <option value="1">18-29</option>
-                            <option value="2">30-39</option>
-                            <option value="3">40-49</option>
-                            <option value="4">50+</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label>Audience Gender:</label>
-                        <select id="audienceGender">
-                            <option value="0">Male</option>
-                            <option value="1">Female</option>
-                            <option value="2">Both</option>
-                        </select>
-                    </div>
-                `;
-            }
+	function generateTimeOptions() {
+		return Array.from({length:96}, (_,i) => {
+			let h = Math.floor(i/4);
+			let m = (i%4)*15;
+			let time = `${h.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}`;
+			return `<option value="${i}">${time}</option>`;
+		}).join('');
+	}
 
-            if (diff === 'hard' || diff === 'impossible') {
-                fields.innerHTML += `
-                    <div>
-                        <label>Sponsor Length (seconds):</label>
-                        <input type="number" id="sponsorSec" min="0" max="60" placeholder="0-60">
-                    </div>
-                    <div>
-                        <label>Number of Ad Breaks:</label>
-                        <input type="number" id="adBreaks" min="0" max="10" placeholder="0-10">
-                    </div>
-                `;
-            }
+	function getVal(id, def = '', parse = false) {
+		if (!window[id]) return def;
+		let v = window[id].value;
+		if (parse) {
+			let n = parseInt(v, 10);
+			return isNaN(n) ? def : n;
+		}
+		return v;
+	}
 
-            if (diff === 'impossible') {
-                fields.innerHTML += `
-                    <br><br><br><div>
-                        <label>Self Plug:</label>
-                        <div style="display: flex; flex-wrap: wrap; flex-direction: row; justify-content: center; gap: 0px 10px;">
-                            <label><input type="checkbox" id="merch"> Merch</label><br>
-                            <label><input type="checkbox" id="twitch"> Twitch</label><br>
-                            <label><input type="checkbox" id="discord"> Discord</label><br>
-                            <label><input type="checkbox" id="secondchannel"> Second Channel</label><br>
-                            <label><input type="checkbox" id="instagram"> Instagram</label><br>
-                            <label><input type="checkbox" id="tiktok"> TikTok</label><br>
-                            <label><input type="checkbox" id="linkedin"> LinkedIn</label><br>
-                            <label><input type="checkbox" id="twitter"> Twitter (X)</label><br>
-                            <label><input type="checkbox" id="patreon"> Patreon</label><br>
-                        </div>
-                    </div>
-                `;
-            }
-        }
+	function upload() {
+		let diff = difficulty.value;
+		let inputs = {
+			durationMin: getVal('durationMin', 30, true),
+			uploadTime: getVal('uploadTime', 0, true),
+			titleLength: getVal('title', '').length
+		};
+		if (atLeast(diff, 'medium')) {
+			inputs.durationSec = getVal('durationSec', 0, true);
+			inputs.audienceAge = getVal('audienceAge', 0, true);
+			inputs.audienceGender = getVal('audienceGender', 0, true);
+		}
+		if (atLeast(diff, 'hard')) {
+			inputs.sponsorSec = getVal('sponsorSec', 0, true);
+			inputs.adBreaks = getVal('adBreaks', 0, true);
+		}
+		if (diff === 'impossible') {
+			let plugs = ['merch','twitch','discord','secondchannel','instagram','tiktok','linkedin','twitter','patreon'];
+			inputs.selfPlug = plugs.filter(id => window[id] && window[id].checked);
+		}
 
-        function generateTimeOptions() {
-            let options = '';
-            for (let h = 0; h < 24; h++) {
-                for (let m = 0; m < 60; m += 15) {
-                    const time = `${h.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}`;
-                    const value = h * 4 + m / 15;
-                    options += `<option value="${value}">${time}</option>`;
-                }
-            }
-            return options;
-        }
+		lastInputs = {
+			title: getVal('title'),
+			uploadTime: getVal('uploadTime'),
+			durationMin: getVal('durationMin'),
+			durationSec: atLeast(diff, 'medium') ? getVal('durationSec') : undefined,
+			audienceAge: atLeast(diff, 'medium') ? getVal('audienceAge') : undefined,
+			audienceGender: atLeast(diff, 'medium') ? getVal('audienceGender') : undefined,
+			sponsorSec: atLeast(diff, 'hard') ? getVal('sponsorSec') : undefined,
+			adBreaks: atLeast(diff, 'hard') ? getVal('adBreaks') : undefined,
+			selfPlug: diff === 'impossible' ? inputs.selfPlug : undefined
+		};
 
-        function upload() {
-            const diff = document.getElementById('difficulty').value;
-            const inputs = {
-                durationMin: parseInt(document.getElementById('durationMin').value) || 30,
-                uploadTime: parseInt(document.getElementById('uploadTime').value),
-                titleLength: document.getElementById('title').value.length
-            };
+		let views = calculateViews(inputs, diff);
+		let titleText = getVal('title');
+		controls.style.display = 'none';
+		graphContainer.style.display = 'block';
+		videoDescription.style.display = 'block';
+		descTitle.textContent = titleText;
+		descDate.textContent = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric'});
+		animateGraph(views, () => { 
+			descViews.textContent = views.toLocaleString();
+			let imgSrc = viewsChart.toDataURL();
+			history.push({ title: titleText, views, timestamp: Date.now(), imgSrc });
+			loadRecommendations();
+			generateComments(views);
+			nextBtn.style.display = 'block'; 
+		});
+	}
 
-            if (diff === 'medium' || diff === 'hard' || diff === 'impossible') {
-                inputs.durationSec = parseInt(document.getElementById('durationSec').value) || 0;
-                inputs.audienceAge = parseInt(document.getElementById('audienceAge').value);
-                inputs.audienceGender = parseInt(document.getElementById('audienceGender').value);
-            }
+	function calculateViews(inputs, diff) {
+		let score = 0;
+		let fieldLevels = {
+			durationMin: 'easy', uploadTime: 'easy', titleLength: 'easy',
+			durationSec: 'medium', audienceAge: 'medium', audienceGender: 'medium',
+			sponsorSec: 'hard', adBreaks: 'hard'
+		};
+		let baseScores = { durationMin:1000, uploadTime:1000, titleLength:1000, durationSec:500, sponsorSec:500, adBreaks:500 };
+		let exactScores = { audienceAge:1000, audienceGender:1000 };
+		let maxScores = { easy:3000, medium:5500, hard:6500, impossible:7500 };
 
-            if (diff === 'hard' || diff === 'impossible') {
-                inputs.sponsorSec = parseInt(document.getElementById('sponsorSec').value) || 0;
-                inputs.adBreaks = parseInt(document.getElementById('adBreaks').value) || 0;
-            }
+		Object.keys(baseScores).forEach(key => {
+			if (atLeast(diff, fieldLevels[key])) {
+				score += baseScores[key] / (1 + Math.abs(inputs[key] - targets[key]));
+			}
+		});
 
-            if (diff === 'impossible') {
-                inputs.selfPlug = [];
-                ['merch','twitch','discord','secondchannel','instagram','tiktok','linkedin','twitter','patreon'].forEach(id => {
-                    if (document.getElementById(id).checked) inputs.selfPlug.push(id);
-                });
-            }
+		Object.keys(exactScores).forEach(key => {
+			if (atLeast(diff, fieldLevels[key])) {
+				score += inputs[key] === targets[key] ? exactScores[key] : 0;
+			}
+		});
 
-            lastInputs = {
-                title: document.getElementById('title').value,
-                uploadTime: document.getElementById('uploadTime').value,
-                durationMin: document.getElementById('durationMin').value,
-                durationSec: (diff === 'medium' || diff === 'hard' || diff === 'impossible') ? document.getElementById('durationSec').value : undefined,
-                audienceAge: (diff === 'medium' || diff === 'hard' || diff === 'impossible') ? document.getElementById('audienceAge').value : undefined,
-                audienceGender: (diff === 'medium' || diff === 'hard' || diff === 'impossible') ? document.getElementById('audienceGender').value : undefined,
-                sponsorSec: (diff === 'hard' || diff === 'impossible') ? document.getElementById('sponsorSec').value : undefined,
-                adBreaks: (diff === 'hard' || diff === 'impossible') ? document.getElementById('adBreaks').value : undefined,
-                selfPlug: diff === 'impossible' ? inputs.selfPlug : undefined
-            };
+		if (diff === 'impossible') {
+			score += JSON.stringify(inputs.selfPlug.sort()) === JSON.stringify(targets.selfPlug.sort()) ? 1000 : 0;
+		}
 
-            const views = calculateViews(inputs, diff);
-            const title = document.getElementById('title').value;
-            document.getElementById('controls').style.display = 'none';
-            document.getElementById('graphContainer').style.display = 'block';
-            document.getElementById('videoDescription').style.display = 'block';
-            document.getElementById('descTitle').textContent = title;
-            document.getElementById('descDate').textContent = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-            animateGraph(views, () => { 
-                document.getElementById('descViews').textContent = views.toLocaleString();
-                const imgSrc = document.getElementById('viewsChart').toDataURL();
-                saveAttempt(title, views, imgSrc);
-                loadRecommendations();
-                generateComments(views);
-                document.getElementById('nextBtn').style.display = 'block'; 
-            });
-        }
+		return Math.floor((score * (1000000 + Math.random() * 250000)) / maxScores[diff]);
+	}
 
-        function calculateViews(inputs, diff) {
-            let score = 0;
+	function animateGraph(finalViews, callback) {
+		let canvas = viewsChart, ctx = canvas.getContext('2d'), frame = 0 ,totalFrames = 100, scoreData = [], spikes = [], currentMax = 0;
+		for (let s = 0; s < 4; s++) {
+			spikes.push({
+				frame: Math.floor(Math.random() * (totalFrames * 0.8)) + 10,
+				amount: 0.05 + Math.random() * 0.1
+			});
+		}
+		for (let i = 0; i <= totalFrames; i++) {
+			let progress = i / totalFrames;
+			let baseValue = 1 - Math.pow(1 - progress, 3);
+			if (i > 10) {
+				spikes.forEach(spike => {if (i === spike.frame) baseValue += spike.amount;});
+				baseValue += Math.abs(Math.random() - 0.5) * 0.02;
+			}
+			baseValue = Math.max(currentMax, Math.min(1, baseValue));
+			currentMax = baseValue;
+			scoreData.push(baseValue * finalViews);
+		}
+		
+		let timer = setInterval(() => {
+			ctx.clearRect(0, 0, canvas.width, canvas.height);
+			let dynamicMaxScale = Math.max(100, Math.ceil(scoreData[frame] / 50) * 50);
+			if (scoreData[frame] > dynamicMaxScale * 0.8) dynamicMaxScale = Math.ceil(scoreData[frame] * 1.3 / 100) * 100;
+			ctx.strokeStyle = '#333';
+			ctx.fillStyle = '#aaa';
+			ctx.font = '12px Arial';
+			ctx.lineWidth = 1;
+			for (let i = 0; i <= 4; i++) {
+				let y = 20 + (canvas.height - 40) / 4 * i;
+				let value = dynamicMaxScale - (dynamicMaxScale / 4 * i);
+				ctx.beginPath();
+				ctx.moveTo(20, y);
+				ctx.lineTo(canvas.width - 20, y);
+				ctx.stroke();
+				ctx.fillText(value.toLocaleString(), 5, y + 4);
+			}
+			
+			ctx.strokeStyle = '#666';
+			ctx.lineWidth = 2;
+			ctx.beginPath();
+			ctx.moveTo(20, 20);
+			ctx.lineTo(20, canvas.height - 20);
+			ctx.stroke();
+			
+			if (frame > 0) {
+				ctx.strokeStyle = '#ff0000';
+				ctx.lineWidth = 3;
+				ctx.beginPath();
+				
+				for (let i = 0; i <= frame; i++) {
+					let x = 20 + ((i / totalFrames) * (canvas.width - 40));
+					let y = 20 + (canvas.height - 40) - (scoreData[i] / dynamicMaxScale) * (canvas.height - 40);
+					if (i === 0) ctx.moveTo(x, y);
+					else ctx.lineTo(x, y);
+				}
+				ctx.stroke();
+			}
+			frame++;
+			if (frame >= totalFrames) {
+				clearInterval(timer);
+				ctx.fillStyle = '#000';
+				ctx.font = '14px Arial';
+				ctx.fillText(finalViews.toLocaleString() + ' views', canvas.width - 120, 40);
+				if (callback) callback();
+			}
+		}, 50);
+	}
 
-            score += 1000 / (1 + Math.abs(inputs.durationMin - targets.durationMin));
-            score += 1000 / (1 + Math.abs(inputs.uploadTime - targets.uploadTime));
-            score += 1000 / (1 + Math.abs(inputs.titleLength - targets.titleLength));
+	function generateThumbnail(attempt) {
+		if (attempt.imgSrc) return attempt.imgSrc;
+		let canvas = document.createElement('canvas');
+		canvas.width = 80; canvas.height = 60;
+		let ctx = canvas.getContext('2d');
+		ctx.fillStyle = attempt.color || `hsl(${Math.floor(Math.random() * 360)}, 100%, 50%)`;
+		ctx.fillRect(0, 0, 80, 60);
+		ctx.fillStyle = '#fff';
+		ctx.font = 'bold 24px Arial';
+		ctx.textAlign = 'center';
+		ctx.fillText(attempt.emoji || 'HOT', 40, 40);
+		return canvas.toDataURL();
+	}
 
-            if (diff === 'medium' || diff === 'hard' || diff === 'impossible') {
-                score += 500 / (1 + Math.abs(inputs.durationSec - targets.durationSec));
-                score += inputs.audienceAge === targets.audienceAge ? 1000 : 0;
-                score += inputs.audienceGender === targets.audienceGender ? 1000 : 0;
-            }
+	function loadRecommendations() {
+		let recs = recommendations;
+		recs.innerHTML = '';
+		let sorted = history.slice().sort((a, b) => b.timestamp - a.timestamp);
+		sorted.slice(0, 10).forEach(attempt => {
+			let imgSrc = generateThumbnail(attempt);
+			let div = document.createElement('div');
+			div.className = 'recommendation';
+			let title = attempt.title || "Your Video";
+			let truncatedTitle = title.length > 35 ? (title.substring(0, title.substring(0, 35).lastIndexOf(' ') || 35) + '...') : title;
+			div.innerHTML = `<img src="${imgSrc}" alt="Video"><div><h4>${truncatedTitle}</h4><p>${attempt.views.toLocaleString()} views</p></div>`;
+			recs.appendChild(div);
+		});
+	}
 
-            if (diff === 'hard' || diff === 'impossible') {
-                score += 500 / (1 + Math.abs(inputs.sponsorSec - targets.sponsorSec));
-                score += 500 / (1 + Math.abs(inputs.adBreaks - targets.adBreaks));
-            }
-
-            if (diff === 'impossible') {
-                score += JSON.stringify(inputs.selfPlug.sort()) === JSON.stringify(targets.selfPlug.sort()) ? 1000 : 0;
-            }
-
-            let maxScore = 3000;
-            if (diff === 'medium') maxScore = 5500;
-            else if (diff === 'hard') maxScore = 6500;
-            else if (diff === 'impossible') maxScore = 7500;
-
-            return Math.floor((score * (1000000 + Math.random() * 250000)) / maxScore);
-        }
-
-        function animateGraph(finalViews, callback) {
-            const canvas = document.getElementById('viewsChart');
-            const ctx = canvas.getContext('2d');
-            let frame = 0;
-            const totalFrames = 100;
-            const scoreData = [];
-            
-            // Generate random spikes
-            const spikes = [];
-            for (let s = 0; s < 4; s++) {
-                spikes.push({
-                    frame: Math.floor(Math.random() * (totalFrames * 0.8)) + 10,
-                    amount: 0.05 + Math.random() * 0.1
-                });
-            }
-            
-            // Generate more realistic curve data with spikes and plateaus
-            let currentMax = 0;
-            for (let i = 0; i <= totalFrames; i++) {
-                const progress = i / totalFrames;
-                let baseValue = 1 - Math.pow(1 - progress, 3); // Base exponential curve
-                
-                // Add some realistic variations but ensure always increasing
-                if (i > 10) {
-                    // Add random growth spikes
-                    spikes.forEach(spike => {
-                        if (i === spike.frame) baseValue += spike.amount;
-                    });
-                    
-                    // Add small random growth (always positive)
-                    baseValue += Math.abs(Math.random() - 0.5) * 0.02;
-                }
-                
-                baseValue = Math.max(currentMax, Math.min(1, baseValue)); // Ensure never decreases
-                currentMax = baseValue; // Update the maximum reached
-                
-                scoreData.push(baseValue * finalViews);
-            }
-            
-            const timer = setInterval(() => {
-                // Clear canvas
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
-                
-                // Dynamic max scale that grows with current score
-                let dynamicMaxScale = Math.max(100, Math.ceil(scoreData[frame] / 50) * 50);
-                // Add some headroom so the line doesn't hit the top
-                if (scoreData[frame] > dynamicMaxScale * 0.8) {
-                    dynamicMaxScale = Math.ceil(scoreData[frame] * 1.3 / 100) * 100;
-                }
-                
-                // Draw grid and labels
-                ctx.strokeStyle = '#333';
-                ctx.fillStyle = '#aaa';
-                ctx.font = '12px Arial';
-                ctx.lineWidth = 1;
-                
-                for (let i = 0; i <= 4; i++) {
-                    const y = 20 + (canvas.height - 40) / 4 * i;
-                    const value = dynamicMaxScale - (dynamicMaxScale / 4 * i);
-                    
-                    // Grid line
-                    ctx.beginPath();
-                    ctx.moveTo(20, y);
-                    ctx.lineTo(canvas.width - 20, y);
-                    ctx.stroke();
-                    
-                    // Y-axis labels
-                    ctx.fillText(value.toLocaleString(), 5, y + 4);
-                }
-                
-                // Draw Y-axis
-                ctx.strokeStyle = '#666';
-                ctx.lineWidth = 2;
-                ctx.beginPath();
-                ctx.moveTo(20, 20);
-                ctx.lineTo(20, canvas.height - 20);
-                ctx.stroke();
-                
-                // Draw line graph
-                if (frame > 0) {
-                    ctx.strokeStyle = '#ff0000';
-                    ctx.lineWidth = 3;
-                    ctx.beginPath();
-                    
-                    for (let i = 0; i <= frame; i++) {
-                        const x = 20 + ((i / totalFrames) * (canvas.width - 40));
-                        const y = 20 + (canvas.height - 40) - (scoreData[i] / dynamicMaxScale) * (canvas.height - 40);
-                        if (i === 0) {
-                            ctx.moveTo(x, y);
-                        } else {
-                            ctx.lineTo(x, y);
-                        }
-                    }
-                    ctx.stroke();
-                }
-                
-                frame++;
-                
-                if (frame >= totalFrames) {
-                    clearInterval(timer);
-                    // Add final view count
-                    ctx.fillStyle = '#000';
-                    ctx.font = '14px Arial';
-                    ctx.fillText(finalViews.toLocaleString() + ' views', canvas.width - 120, 40);
-                    if (callback) callback();
-                }
-            }, 50);
-        }
-
-        function clearGraph() {
-            const canvas = document.getElementById('viewsChart');
-            const ctx = canvas.getContext('2d');
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-        }
-
-        function saveAttempt(title, views, imgSrc) {
-            history.push({ title, views, timestamp: Date.now(), imgSrc });
-        }
-
-        function loadRecommendations() {
-            const recs = document.getElementById('recommendations');
-            recs.innerHTML = '';
-            const sorted = history.slice().sort((a, b) => b.timestamp - a.timestamp);
-            sorted.slice(0, 10).forEach(attempt => {
-                let imgSrc;
-                if (attempt.imgSrc) {
-                    imgSrc = attempt.imgSrc;
-                } else {
-                    const canvas = document.createElement('canvas');
-                    canvas.width = 80;
-                    canvas.height = 60;
-                    const ctx = canvas.getContext('2d');
-                    ctx.fillStyle = attempt.color || `hsl(${Math.floor(Math.random() * 360)}, 100%, 50%)`;
-                    ctx.fillRect(0, 0, 80, 60);
-                    ctx.fillStyle = '#fff';
-                    ctx.font = 'bold 24px Arial';
-                    ctx.textAlign = 'center';
-                    ctx.fillText(attempt.emoji || 'HOT', 40, 40);
-                    imgSrc = canvas.toDataURL();
-                }
-                const div = document.createElement('div');
-                div.className = 'recommendation';
-                const title = attempt.title || "Your Video";
-                let truncatedTitle = title;
-                if (title.length > 35) {
-                    const lastSpace = title.substring(0, 35).lastIndexOf(' ');
-                    if (lastSpace > 0) {
-                        truncatedTitle = title.substring(0, lastSpace) + '...';
-                    } else {
-                        truncatedTitle = title.substring(0, 35) + '...';
-                    }
-                }
-                div.innerHTML = `
-                    <img src="${imgSrc}" alt="Video">
-                    <div>
-                        <h4>${truncatedTitle}</h4>
-                        <p>${attempt.views.toLocaleString()} views</p>
-                    </div>
-                `;
-                recs.appendChild(div);
-            });
-        }
-
-        function generateComments(views) {
-            const commentsDiv = document.getElementById('comments');
-            commentsDiv.innerHTML = '<h4>Comments</h4>';
-            let category;
-            if (views > 500000) {
-                category = positiveComments;
-            } else if (views > 100000) {
-                category = [...positiveComments, ...neutralComments];
-            } else {
-                category = [...negativeComments, ...neutralComments];
-            }
-            const numComments = Math.min(20, Math.max(3, Math.floor(views / 30000))); // 3-20 comments based on views
-            const firstCommentIndex = Math.floor(randomFunc() * numComments);
-            for (let i = 0; i < numComments; i++) {
-                const user = fakeUsers[Math.floor(randomFunc() * fakeUsers.length)];
-                let message = category[Math.floor(randomFunc() * category.length)];
-                if (i === firstCommentIndex) {
-                    message = " first";
-                }
-                const div = document.createElement('div');
-                div.className = 'comment';
-                div.innerHTML = `<strong>${user}:</strong> ${message}`;
-                commentsDiv.appendChild(div);
-            }
-        }
-        newGame();
-    </script>
+	function generateComments(views) {
+		comments.innerHTML = '<h4>Comments</h4>';
+		let category = views > 500000 ? positiveComments : views > 100000 ? [...positiveComments, ...neutralComments] : [...negativeComments, ...neutralComments];
+		let numComments = Math.min(20, Math.max(3, Math.floor(views / 30000)));
+		let used = new Set();
+		for (let i = 0; i < numComments; i++) {
+			let user;
+			do { user = fakeUsers[Math.floor(randomFunc() * fakeUsers.length)]; } while (used.has(user) && used.size < fakeUsers.length);
+			used.add(user);
+			let firstCommentIndex = Math.floor(randomFunc() * numComments);
+			let message = (i === firstCommentIndex) ? "first" : category[Math.floor(randomFunc() * category.length)];
+			let div = document.createElement('div');
+			div.className = 'comment';
+			div.innerHTML = `<strong>${user}:</strong> ${message}`;
+			comments.appendChild(div);
+		}
+	}
+	newGame();
+</script>
 </body>
 </html>

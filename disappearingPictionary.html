@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<title>Disappearing Pictionary</title>
+<!-- A game where you draw something and it slowly disappears
+		Optional limited ink mode
+		Answer is hidden until you hold down a button to reveal it
+	Vibe coded with Claude, and Gemini
+	Created by cswert
+	Last modified 9 Oct 2025-->
+<html lang="en">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+	body {
+		font-family: Arial, sans-serif;
+		margin: 0;
+		padding: 0;
+		background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+		height: 100vh;
+		color: white;
+		overflow: hidden;
+		display: flex;
+		flex-direction: column;
+	}
+	.gameContainer {
+		background: rgba(255, 255, 255, 0.1);
+		backdrop-filter: blur(10px);
+		box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+		flex: 1;
+		display: flex;
+		flex-direction: column;
+		margin: 20px;
+		border-radius: 15px;
+		overflow: hidden;
+	}
+	.mainContent {
+		display: flex;
+		flex: 1;
+		gap: 15px;
+		padding: 15px;
+		overflow: hidden;
+	}
+	.canvasContainer {
+		flex: 1;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		background: rgba(255, 255, 255, 0.9);
+		border-radius: 10px;
+		border: 3px solid rgba(255, 255, 255, 0.3);
+		position: relative;
+		overflow: hidden;
+	}
+	.sidebar {
+		width: 250px;
+		display: flex;
+		flex-direction: column;
+		gap: 15px;
+		overflow-y: auto;
+		padding-right: 5px;
+	}
+	.answerSelection {
+		display: flex;
+		flex-direction: column;
+		gap: 10px;
+		background: rgba(255, 255, 255, 0.1);
+		padding: 15px;
+		border-radius: 10px;
+	}
+	.answerInput {
+		padding: 10px;
+		font-size: 16px;
+		border: 2px solid rgba(255, 255, 255, 0.3);
+		border-radius: 8px;
+		background: rgba(255, 255, 255, 0.2);
+		color: white;
+		letter-spacing: 1px;
+	}
+	.answerInput::placeholder {color: rgba(255, 255, 255, 0.7);}
+	.revealBtn {
+		background: linear-gradient(45deg, #ff6b6b, #ee5a24);
+		border: none;
+		color: white;
+		padding: 10px 16px;
+		font-size: 14px;
+		border-radius: 8px;
+		cursor: pointer;
+		transition: transform 0.2s;
+		width: 100%;
+	}
+	.revealBtn:hover {transform: scale(1.05);}
+	.controls {
+		display: flex;
+		flex-direction: column;
+		gap: 12px;
+		background: rgba(255, 255, 255, 0.1);
+		padding: 15px;
+		border-radius: 10px;
+	}
+	.controlGroup {
+		display: flex;
+		flex-direction: column;
+		gap: 8px;
+	}
+	.controlGroup label {
+		font-weight: bold;
+		color: white;
+		font-size: 14px;
+	}
+	.colorInput {
+		width: 60px;
+		height: 40px;
+		border: 2px solid white;
+		border-radius: 5px;
+		cursor: pointer;
+	}
+	.sizeInput {width: 100%; margin: 5px 0;}
+	.toolBtn {
+		background: rgba(255, 255, 255, 0.2);
+		border: 2px solid rgba(255, 255, 255, 0.3);
+		color: white;
+		padding: 10px 8px;
+		border-radius: 6px;
+		cursor: pointer;
+		transition: all 0.2s;
+		text-align: center;
+	}
+	.toolBtn:hover, .toolBtn.active {
+		background: rgba(255, 255, 255, 0.4);
+		border-color: white;
+		transform: scale(1.02);
+	}
+	.drawingArea {
+		cursor: crosshair;
+		display: block;
+		width: 100%;
+		height: 100%;
+	}
+	h1 {
+		text-align: center;
+		margin: 0;
+		padding: 15px 20px;
+		background: rgba(255, 255, 255, 0.05);
+		border-bottom: 2px solid rgba(255, 255, 255, 0.2);
+	}
+	.toolButtons {
+		display: grid;
+		grid-template-columns: 1fr 1fr;
+		gap: 8px;
+	}
+	select, input[type="checkbox"] {
+		cursor: pointer;
+	}
+	.checkboxGroup {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+	}
+	.colorSizeWrapper {
+		display: grid;
+		grid-template-columns: auto 1fr;
+		gap: 12px;
+		align-items: start;
+	}
+	.timerInfo {
+		text-align: center;
+		margin-top: 15px;
+		font-size: 14px;
+		color: rgba(255, 255, 255, 0.8);
+	}
+	option{color: black;}
+</style>
+<body>
+<div class="gameContainer">
+	<h1>🎨 Disappearing Pictionary</h1>
+	<div class="mainContent">
+		<div class="canvasContainer">
+			<svg id="drawingArea" class="drawingArea"></svg>
+		</div>
+		<div class="sidebar">
+			<div class="answerSelection">
+				<input type="password" 
+						id="answerInput" 
+						class="answerInput" 
+						placeholder="Enter answer...">
+				<button id="revealBtn" class="revealBtn">Reveal Answer</button>
+			</div>
+			<div class="controls">
+				<div class="colorSizeWrapper">
+					<div class="controlGroup">
+						<label>Color:</label>
+						<input type="color" id="colorPicker" class="colorInput" value="#000000">
+					</div>
+					<div class="controlGroup">
+						<label>Size: <span id="sizeDisplay">5px</span></label>
+						<input type="range" id="sizeSlider" class="sizeInput" min="2" max="20" value="5">
+					</div>
+				</div>
+				<div class="controlGroup">
+					<label>Drawing Tools:</label>
+					<div class="toolButtons">
+						<button id="penTool" class="toolBtn active">✏️ Pen</button>
+						<button id="circleTool" class="toolBtn">⭕ Circle</button>
+						<button id="squareTool" class="toolBtn">⬜ Square</button>
+						<button id="lineTool" class="toolBtn">📏 Line</button>
+					</div>
+				</div>
+				<div class="controlGroup">
+					<label>Fade Timer:</label>
+					<select id="fadeTimeSelect" style="padding: 8px; border-radius: 4px; background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.3); width: 100%;">
+						<option value="5000">5 seconds</option>
+						<option value="10000">10 seconds</option>
+						<option value="15000" selected>15 seconds</option>
+						<option value="30000">30 seconds</option>
+						<option value="3600000">1 hour</option>
+					</select>
+				</div>
+				<div class="controlGroup">
+					<div class="checkboxGroup">
+						<input type="checkbox" id="limitedInkCheckbox">
+						<label for="limitedInkCheckbox" style="font-weight: normal;">Limited Ink Mode</label>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+</body>
+<script>
+	let isDrawing = false, currentTool = 'pen', currentColor = '#000000', currentSize = 5;
+	let startX, startY, drawingElements = [], drawingInkUsage = [], previewElement = null;
+	let fadeTime = 15000, limitedInk = false, inkLeft = maxInk = 5000;
+	let originalAnswer = '', isRevealed = false;
+	let getTotalInkUsed = () => drawingInkUsage.reduce((a, b) => a + b, 0);
+	let tools = { pen: penTool, circle: circleTool, square: squareTool, line: lineTool };
+
+	limitedInkCheckbox.addEventListener('change', () => {
+		limitedInk = limitedInkCheckbox.checked;
+		if (limitedInk) inkLeft = maxInk;
+	});
+	
+	answerInput.addEventListener('input', () => {
+		if (!isRevealed && answerInput.type === 'password') originalAnswer = answerInput.value;
+	});
+	
+	let revealAnswer = () => {
+		answerInput.type = 'password';
+		revealBtn.textContent = 'Reveal Answer';
+		isRevealed = false;
+	};
+	
+	revealBtn.addEventListener('mousedown', () => {
+		if (!isRevealed) {
+			answerInput.type = 'text';
+			answerInput.value = originalAnswer;
+			revealBtn.textContent = 'Revealing...';
+			isRevealed = true;
+		}
+	});
+	
+	revealBtn.addEventListener('mouseup', revealAnswer);
+	revealBtn.addEventListener('mouseleave', () => { if (isRevealed) revealAnswer(); });
+	
+	colorPicker.addEventListener('change', () => currentColor = colorPicker.value);
+	
+	sizeSlider.addEventListener('input', () => {
+		currentSize = sizeSlider.value;
+		sizeDisplay.textContent = currentSize + 'px';
+	});
+	
+	fadeTimeSelect.addEventListener('change', () => fadeTime = parseInt(fadeTimeSelect.value));
+	
+	Object.keys(tools).forEach(toolName => {
+		tools[toolName].addEventListener('click', function() {
+			Object.values(tools).forEach(btn => btn.classList.remove('active'));
+			this.classList.add('active');
+			currentTool = toolName;
+		});
+	});
+	
+	['mousedown', 'mousemove', 'mouseup', 'mouseleave'].forEach((event, i) => {
+		drawingArea.addEventListener(event, [startDrawing, draw, stopDrawing, stopDrawing][i]);
+	});
+	
+	let createSVGElement = (type, attrs) => {
+		let el = document.createElementNS('http://www.w3.org/2000/svg', type);
+		Object.entries(attrs).forEach(([key, val]) => el.setAttribute(key, val));
+		return el;
+	};
+	
+	function startDrawing(e) {
+		if (limitedInk && inkLeft <= 0) return;
+		isDrawing = true;
+		let rect = drawingArea.getBoundingClientRect();
+		startX = e.clientX - rect.left;
+		startY = e.clientY - rect.top;
+		if (currentTool === 'pen') {
+			let path = createSVGElement('path', {
+				d: `M ${startX} ${startY}`,
+				stroke: currentColor,
+				'stroke-width': currentSize,
+				'stroke-linecap': 'round',
+				'stroke-linejoin': 'round',
+				fill: 'none'
+			});
+			drawingArea.appendChild(path);
+			path.currentPath = `M ${startX} ${startY}`;
+			path.segmentStart = Date.now();
+			path.lastX = startX;
+			path.lastY = startY;
+		}
+	}
+	
+	let removeOldestElements = () => {
+		while (getTotalInkUsed() > maxInk && drawingElements.length > 0) {
+			let el = drawingElements.shift();
+			drawingInkUsage.shift();
+			if (el?.parentNode) {
+				el.style.transition = 'opacity 0.2s';
+				el.style.opacity = '0';
+				setTimeout(() => el.parentNode?.removeChild(el), 200);
+			}
+		}
+	};
+	
+	function draw(e) {
+		if (!isDrawing) return;
+		let rect = drawingArea.getBoundingClientRect();
+		let currentX = e.clientX - rect.left;
+		let currentY = e.clientY - rect.top;
+		if (currentTool === 'pen') {
+			let path = drawingArea.lastElementChild;
+			if (path?.tagName === 'path') {
+				let now = Date.now();
+				let dx = currentX - (path.lastX ?? startX);
+				let dy = currentY - (path.lastY ?? startY);
+				let dist = Math.sqrt(dx*dx + dy*dy);
+				let inkUsed = dist * currentSize;
+				if (now - path.segmentStart > 200) {
+					let lastX = path.lastX ?? startX;
+					let lastY = path.lastY ?? startY;
+					if (!limitedInk) scheduleElementRemoval(path);
+					let newPath = createSVGElement('path', {
+						d: `M ${lastX} ${lastY} L ${currentX} ${currentY}`,
+						stroke: currentColor,
+						'stroke-width': currentSize,
+						'stroke-linecap': 'round',
+						'stroke-linejoin': 'round',
+						fill: 'none'
+					});
+					drawingArea.appendChild(newPath);
+					newPath.currentPath = `M ${lastX} ${lastY} L ${currentX} ${currentY}`;
+					newPath.segmentStart = now;
+					newPath.lastX = currentX;
+					newPath.lastY = currentY;
+					path = newPath;
+				} else {
+					path.currentPath += ` L ${currentX} ${currentY}`;
+					path.setAttribute('d', path.currentPath);
+					path.lastX = currentX;
+					path.lastY = currentY;
+				}
+				if (limitedInk) {
+					drawingElements.push(path);
+					drawingInkUsage.push(inkUsed);
+					scheduleElementRemoval(path);
+					removeOldestElements();
+				}
+			}
+		} else updateShapePreview(currentX, currentY);
+	}
+	
+	function updateShapePreview(currentX, currentY) {
+		previewElement?.remove();
+		let shapeConfig = {
+			circle: () => {
+				let radius = Math.sqrt((currentX - startX)**2 + (currentY - startY)**2);
+				return { type: 'circle', attrs: { cx: startX, cy: startY, r: radius }};
+			},
+			square: () => {
+				let width = currentX - startX, height = currentY - startY;
+				return { type: 'rect', attrs: {
+					x: Math.min(startX, currentX),
+					y: Math.min(startY, currentY),
+					width: Math.abs(width),
+					height: Math.abs(height)
+				}};
+			},
+			line: () => ({
+				type: 'line',
+				attrs: { x1: startX, y1: startY, x2: currentX, y2: currentY, 'stroke-linecap': 'round' }
+			})
+		}[currentTool];
+		
+		if (shapeConfig) {
+			let { type, attrs } = shapeConfig();
+			previewElement = createSVGElement(type, {
+				...attrs,
+				stroke: currentColor,
+				'stroke-width': currentSize,
+				fill: 'none',
+				opacity: '0.5',
+				'stroke-dasharray': '5,5'
+			});
+			drawingArea.appendChild(previewElement);
+		}
+	}
+	
+	function stopDrawing(e) {
+		if (!isDrawing) return;
+		isDrawing = false;
+		previewElement?.remove();
+		previewElement = null;
+		let rect = drawingArea.getBoundingClientRect();
+		let endX = e.clientX - rect.left;
+		let endY = e.clientY - rect.top;
+		
+		if (currentTool === 'pen') {
+			let path = drawingArea.lastElementChild;
+			if (path?.tagName === 'path' && !limitedInk) scheduleElementRemoval(path);
+		}
+		else {
+			let shapeData = {
+				circle: () => {
+					let radius = Math.sqrt((endX - startX)**2 + (endY - startY)**2);
+					return {
+						type: 'circle',
+						attrs: { cx: startX, cy: startY, r: radius },
+						inkUsed: 2 * Math.PI * radius * currentSize
+					};
+				},
+				square: () => {
+					let width = endX - startX, height = endY - startY;
+					return {
+						type: 'rect',
+						attrs: {
+							x: Math.min(startX, endX),
+							y: Math.min(startY, endY),
+							width: Math.abs(width),
+							height: Math.abs(height)
+						},
+						inkUsed: 2 * (Math.abs(width) + Math.abs(height)) * currentSize
+					};
+				},
+				line: () => {
+					let dx = endX - startX, dy = endY - startY;
+					return {
+						type: 'line',
+						attrs: { x1: startX, y1: startY, x2: endX, y2: endY, 'stroke-linecap': 'round' },
+						inkUsed: Math.sqrt(dx*dx + dy*dy) * currentSize
+					};
+				}
+			}[currentTool];
+			
+			if (shapeData) {
+				let { type, attrs, inkUsed } = shapeData();
+				let element = createSVGElement(type, {
+					...attrs,
+					stroke: currentColor,
+					'stroke-width': currentSize,
+					fill: 'none'
+				});
+				drawingArea.appendChild(element);
+				scheduleElementRemoval(element);
+				
+				if (limitedInk) {
+					drawingElements.push(element);
+					drawingInkUsage.push(inkUsed);
+					removeOldestElements();
+				}
+			}
+		}
+	}
+	
+	function scheduleElementRemoval(element, eraseFast) {
+		setTimeout(() => {
+			if (element.parentNode) {
+				element.style.transition = 'opacity 1s ease-out';
+				element.style.opacity = '0';
+				setTimeout(() => element.parentNode?.removeChild(element), 1000);
+			}
+		}, eraseFast ? 100 : fadeTime);
+	}
+</script>
+</html>

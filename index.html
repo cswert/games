@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Games Collection</title>
+<style>
+    body {
+        font-family: system-ui, Roboto, sans-serif;
+        background: linear-gradient(135deg, #1a1a1a, #2d2d2d);
+        color: #e0e0e0;
+        margin: 0;
+        padding: 20px;
+        min-height: 100vh;
+    }
+    h1 {
+        text-align: center;
+        color: #fff;
+        margin-bottom: 40px;
+        font-size: 2.5em;
+        text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+    }
+    .games-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 20px;
+        max-width: 1200px;
+        margin: 0 auto;
+    }
+    .game-card {
+        background: #333;
+        border-radius: 15px;
+        padding: 20px;
+        box-shadow: 0 8px 16px rgba(0,0,0,0.3);
+        transition: transform 0.3s, box-shadow 0.3s;
+        text-decoration: none;
+        color: inherit;
+        display: block;
+        position: relative;
+        overflow: hidden;
+    }
+    .game-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 12px 24px rgba(0,0,0,0.4);
+    }
+    .game-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 4px;
+        background: linear-gradient(90deg, #ffeb3b, #ff9800);
+    }
+    .game-card.loud-ometer::before { background: linear-gradient(90deg, #ffeb3b, #ff9800); }
+    .game-card.appease::before { background: linear-gradient(90deg, #2196f3, #0d47a1); }
+    .game-card.guess-colour::before { background: linear-gradient(90deg, #e91e63, #9c27b0, #3f51b5); }
+    .game-card.pictionary::before { background: linear-gradient(90deg, #4caf50, #2e7d32); }
+    .game-card.tic-tac-toe::before { background: linear-gradient(90deg, #f44336, #b71c1c); }
+    .game-title {
+        font-size: 1.5em;
+        margin-bottom: 10px;
+        color: #fff;
+    }
+    .game-description {
+        font-size: 0.9em;
+        color: #ccc;
+        line-height: 1.4;
+    }
+</style>
+<body>
+    <h1>Games Collection</h1>
+    <div class="games-grid">
+        <a href="appeaseTheAlgorithm.html" class="game-card appease">
+            <div class="game-title">Appease The Algorithm</div>
+            <div class="game-description">Guess video parameters to maximize views. Enter search terms and optimize title length, upload time, duration, audience demographics, and more.</div>
+        </a>
+        <a href="disappearingPictionary.html" class="game-card pictionary">
+            <div class="game-title">Disappearing Pictionary</div>
+            <div class="game-description">Draw something that slowly disappears. Optional limited ink mode. Answer is hidden until you hold down a button to reveal it.</div>
+        </a>
+        <a href="guessMyColour.html" class="game-card guess-colour">
+            <div class="game-title">Guess My Colour</div>
+            <div class="game-description">Guess randomly generated colors by their RGB and HSL values. Choose from dropdowns or input exact values across different difficulty levels.</div>
+        </a>
+        <a href="loudOMeter.html" class="game-card loud-ometer">
+            <div class="game-title">Loud-O-Meter</div>
+            <div class="game-description">A game about staying loud. Keep your volume and frequency in target zones to score points. Features multiple difficulty levels using Web Audio API.</div>
+        </a>
+        <a href="ultimateTickTacToe.html" class="game-card tic-tac-toe">
+            <div class="game-title">Ultimate Tic-Tac-Toe</div>
+            <div class="game-description">Tic-Tac-Toe within Tic-Tac-Toe. Play on a 3x3 grid of 3x3 grids. Features CPU opponents with random, mixed, and minimax strategies.</div>
+        </a>
+    </div>
+</body>
+</html>
