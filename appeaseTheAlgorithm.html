@@ -8,13 +8,13 @@
 		Impossible: + Self Plugs
 	Vibe coded with Claude, and Grok
 	Created by cswert
-	Last modified 9 Oct 2025 -->
+	Last modified 11 Oct 2025 -->
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Appease the Algorithm</title>
 <style>
-	body { font-family: "Roboto","Arial",sans-serif; margin: 0; padding: 0; background-color: #f9f9f9;}
+	body { font-family: "Roboto","Arial",sans-serif; user-select: text; background-color: #f9f9f9;}
 	header { background-color: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.1); display: flex; align-items: center; padding: 10px;}
 	header img { height: 40px; margin-right: 20px;}
 	header input[type="text"] { padding: 8px; border: 1px solid #ccc; border-radius: 4px; margin-left: 20%; width: 33%;}
@@ -26,12 +26,12 @@
 		border-radius: 4px;
 		cursor: pointer;
 		position: relative;
-		left: -46px;
-		transform: scale(.9);
+		left: -44px;
+		transform: scale(.95);
 	}
 	main { display: flex; padding: 20px; margin-left: 50px;}
 	section { flex: 3; margin-right: 20px;}
-	.video-player {
+	.videoPlayer {
 		background-color: #000; 
 		width: 100%; 
 		aspect-ratio: 16 / 9; 
@@ -58,8 +58,8 @@
 		box-sizing: border-box;
 	}
 	.inputs input:focus, .inputs select:focus { outline: none; border-color: #ff0000;}
-	.upload-btn {
-		margin: 20px auto 0 42%;
+	.uploadBtn {
+		margin: 20px auto 0 0;
 		padding: 15px 30px;
 		background-color: #ff0000;
 		color: white;
@@ -70,7 +70,7 @@
 		font-weight: bold;
 		transition: background-color 0.2s;
 	}
-	.upload-btn:hover { background-color: #cc0000;}
+	.uploadBtn:hover { background-color: #cc0000;}
 	.graph { background-color: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);}
 	canvas { width: 100%; height: 300px;}
 	aside { flex: 1; background-color: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); width:33%;}
@@ -79,13 +79,20 @@
 	.recommendation div { flex: 1;}
 	.recommendation h4 { margin: 0; font-size: 14px;}
 	.recommendation p { margin: 5px 0; font-size: 12px; color: #666;}
-	.video-description { background-color: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); padding: 20px; margin-top: 20px;}
-	.video-description h3 { margin-top: 0;}
-	.video-description p { margin: 5px 0;}
+	.videoDesc { background-color: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); padding: 20px; margin-top: 20px;}
+	.videoDesc h3 { margin-top: 0;}
+	.videoDesc p { margin: 5px 0;}
 	#comments { margin-top: 20px; border-top: 1px solid #eee; padding-top: 10px;}
 	.comment { margin-bottom: 8px; padding: 8px; background-color: #f9f9f9; border-radius: 4px; font-size: 14px;}
 	.btn { background-color: #ddd; border-radius: 20px; border: none; font-size: 20px; padding: 10px; padding-left: 15px; padding-right: 15px;}
 	select option { background-color: white; color: black;}
+	@media (max-width: 750px) {
+		main {flex-direction: column; margin-left: 0; padding: 10px;}
+		section {margin-right: 0; margin-bottom: 20px;}
+		aside {width: 90%;}
+		header input[type="text"] {margin-left: 0; width: 80%;}
+		header button {position: static; transform: none;}
+	}
 </style>
 </head>
 <body>
@@ -99,8 +106,8 @@
 </header>
 <main>
 	<section>
-		<div class="video-player">
-			<div id="controls">
+		<div class="videoPlayer">
+			<div id="controls" style="text-align: center;">
 				<div class="inputs">
 					<div style="flex-basis: 100%; justify-content: center;">
 						<label>Difficulty:</label>
@@ -113,17 +120,17 @@
 					</div>
 					<div id="inputFields"></div>
 				</div>
-				<button class="upload-btn" onclick="upload()">Upload</button>
+				<button class="uploadBtn" onclick="upload()">Upload</button>
 			</div>
-			<div id="graphContainer" style="display:none;">
+			<div id="graphContainer" style="display:none; text-align: center;">
 				<div class="graph">
 					<h3>Views Over Time</h3>
 					<canvas id="viewsChart"></canvas>
 				</div>
-				<button id="nextBtn" class="upload-btn" style="display:none; margin-left: 30%;" onclick="nextVideo()">Upload Next Video</button>
+				<button id="nextBtn" class="uploadBtn" style="display:none;" onclick="nextVideo()">Upload Next Video</button>
 			</div>
 		</div>
-		<h3 id="descTitle"></h3>
+		<h3 id="descTitle" style="overflow-wrap: anywhere;"></h3>
 		<div style="display:flex; align-items:center; flex-wrap: wrap;">
 			<div id="avatar" style="width:40px; height:40px; background-color:#ccc; border-radius:20px; display:inline-block; vertical-align:middle; margin-right:10px;"></div>
 			<div style="margin-left:10px; margin-right:20px;">
@@ -131,14 +138,14 @@
 				<div style="color:#666;">1.2k subscribers</div>
 			</div>
 			<button class="btn" style="background-color: white; border: 1px solid #ccc; margin-right:10px;">Join</button>
-			<button class="btn" style="margin-right:70px;">🕭 &emsp; V</button>
-			<button class="btn" style="margin-right:10px;">🖒&emsp;|&emsp;🖓</button>
+			<button class="btn" style="margin-right:70px;">🔔 V</button>
+			<button class="btn" style="margin-right:10px;">👍 | 👎</button>
 			<button class="btn" style="margin-right:10px;">↗ Share</button>
 			<button class="btn" style="margin-right:10px;">✦ Ask</button>
 			<button class="btn" style="margin-right:10px;">⤓ Download</button>
 			<button class="btn">...</button>
 		</div>
-		<div id="videoDescription" class="video-description" style="display:none;">
+		<div id="videoDescription" class="videoDesc" style="display:none;">
 			<p><span id="descViews"></span> views <span id="descDate"></span></p>
 			<div id="comments">
 				<h4>Comments</h4>
@@ -248,11 +255,10 @@
 
 	function updateInputs() {
 		let diff = difficulty.value;
-		let fields = inputFields;
-		fields.style.width = "100%";
-		fields.innerHTML = '';
+		inputFields.style.width = "100%";
+		inputFields.innerHTML = '';
 		let allFields = [
-			{id: 'title', label: 'Title:', html: '<input type="text" id="title" placeholder="Enter title" style="width: 85%;">', level: 'easy'},
+			{id: 'title', label: 'Title:', html: '<input type="text" id="title" placeholder="Enter title" maxlength="100" style="width: 85%;">', level: 'easy'},
 			{id: 'uploadTime', label: 'Upload Time:', html: `<select id="uploadTime">${generateTimeOptions()}</select>`, level: 'easy'},
 			{id: 'durationMin', label: 'Duration (min):', html: '<input type="number" id="durationMin" min="1" max="60" placeholder="1-60">', level: 'easy'},
 			{id: 'durationSec', label: 'Duration (sec):', html: '<input type="number" id="durationSec" min="0" max="59" placeholder="0-59">', level: 'medium'},
@@ -262,11 +268,11 @@
 			{id: 'adBreaks', label: 'Number of Ad Breaks:', html: '<input type="number" id="adBreaks" min="0" max="10" placeholder="0-10">', level: 'hard'}
 		];
 		allFields.filter(f => atLeast(diff, f.level)).forEach(f => {
-			fields.innerHTML += `<div${f.id==='title' ? ' style="width: 100%;"' : ''}><label>${f.label}</label>${f.html}</div>`;
+			inputFields.innerHTML += `<div${f.id==='title' ? ' style="width: 100%;"' : ''}><label>${f.label}</label>${f.html}</div>`;
 		});
 		if (diff === 'impossible') {
 			let plugs = ['merch','twitch','discord','secondchannel','instagram','tiktok','linkedin','twitter','patreon'];
-			fields.innerHTML += `<br><br><br><div><label>Self Plug:</label><div style="display: flex; flex-wrap: wrap; flex-direction: row; justify-content: center; gap: 0px 10px;">${plugs.map(p => `<label><input type="checkbox" id="${p}"> ${p.charAt(0).toUpperCase() + p.slice(1)}</label><br>`).join('')}</div></div>`;
+			inputFields.innerHTML += `<br><br><br><div><label>Self Plug:</label><div style="display: flex; flex-wrap: wrap; flex-direction: row; justify-content: center; gap: 0px 10px;">${plugs.map(p => `<label><input type="checkbox" id="${p}"> ${p.charAt(0).toUpperCase() + p.slice(1)}</label><br>`).join('')}</div></div>`;
 		}
 	}
 
@@ -335,7 +341,7 @@
 			history.push({ title: titleText, views, timestamp: Date.now(), imgSrc });
 			loadRecommendations();
 			generateComments(views);
-			nextBtn.style.display = 'block'; 
+			nextBtn.style.display = '';
 		});
 	}
 
@@ -348,7 +354,7 @@
 		};
 		let baseScores = { durationMin:1000, uploadTime:1000, titleLength:1000, durationSec:500, sponsorSec:500, adBreaks:500 };
 		let exactScores = { audienceAge:1000, audienceGender:1000 };
-		let maxScores = { easy:3000, medium:5500, hard:6500, impossible:7500 };
+		let maxScore = 7500;
 
 		Object.keys(baseScores).forEach(key => {
 			if (atLeast(diff, fieldLevels[key])) {
@@ -361,12 +367,8 @@
 				score += inputs[key] === targets[key] ? exactScores[key] : 0;
 			}
 		});
-
-		if (diff === 'impossible') {
-			score += JSON.stringify(inputs.selfPlug.sort()) === JSON.stringify(targets.selfPlug.sort()) ? 1000 : 0;
-		}
-
-		return Math.floor((score * (1000000 + Math.random() * 250000)) / maxScores[diff]);
+		if (diff === 'impossible') score += JSON.stringify(inputs.selfPlug.sort()) === JSON.stringify(targets.selfPlug.sort()) ? 1000 : 0;
+		return Math.floor((score * (1000000 + Math.random() * 250000)) / maxScore);
 	}
 
 	function animateGraph(finalViews, callback) {
@@ -413,12 +415,10 @@
 			ctx.moveTo(20, 20);
 			ctx.lineTo(20, canvas.height - 20);
 			ctx.stroke();
-			
 			if (frame > 0) {
 				ctx.strokeStyle = '#ff0000';
 				ctx.lineWidth = 3;
 				ctx.beginPath();
-				
 				for (let i = 0; i <= frame; i++) {
 					let x = 20 + ((i / totalFrames) * (canvas.width - 40));
 					let y = 20 + (canvas.height - 40) - (scoreData[i] / dynamicMaxScale) * (canvas.height - 40);

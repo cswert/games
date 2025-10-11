@@ -2,13 +2,14 @@
 <title>Guess My Colour Game</title>
 <!-- A game about guessing a randomly generated colour.
 	The goal is to guess the colour by its RGB and HSL values.
-		Easy: Dropdown selection
-		Medium: Input RGB values
-		Hard: Input HSL values
+		Baby: Dropdown selection
+		Easy: Guess wavelength
+		Medium: Guess RGB values
+		Hard: Guess RGB values + HSL values
 		Impossible: Hard, but with useless hints
 	Vibe coded with ChatGPT, and Claude
 	Created by cswert
-	Last modified 9 Oct 2025-->
+	Last modified 11 Oct 2025-->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -21,52 +22,45 @@
 		padding: 20px;
 		background-color: #1a1a1a;
 		color: #e0e0e0;
+		user-select: none;
 	}
-	.game-container {
+	.gameContainer {
 		background: #2d2d2d;
 		border-radius: 10px;
 		padding: 20px;
 		box-shadow: 0 2px 10px rgba(0,0,0,0.5);
 	}
-	.color-display {
+	.displayColour {
 		width: 200px;
 		height: 200px;
 		border: 3px solid #555;
 		border-radius: 10px;
 		margin: 20px auto;
 	}
-	.difficulty-selector {
-		text-align: center;
-		margin-bottom: 20px;
-	}
-	.difficulty-selector button {
-		margin: 0 10px;
-		padding: 10px 20px;
+	.diffSelect {text-align: center; margin-bottom: 20px;}
+	.diffSelect button {
+		padding: 5px 10px;
 		border: none;
 		border-radius: 5px;
 		cursor: pointer;
 		background: #444;
 		color: #e0e0e0;
 	}
-	.difficulty-selector button.active {background: #4CAF50; color: white;}
-	.input-section {margin: 20px 0; text-align: center;}
-	.input-group {margin: 10px 0;}
-	.input-group label {
-		display: inline-block;
-		width: 40px;
-		text-align: left;
-	}
-	.input-group input, .input-group select {
+	.diffSelect button.active {background: #4CAF50; color: white;}
+	.inputs {margin: 20px 0; text-align: center;}
+	.inputGrp {margin: 10px 0;}
+	.inputGrp label {display: inline-block; text-align: left;}
+	.inputGrp input, .inputGrp select {
 		margin: 0 5px;
 		padding: 5px;
-		width: 60px;
+		width: 64px;
 		background: #444;
 		color: #e0e0e0;
 		border: 1px solid #666;
 		border-radius: 3px;
 	}
-	.input-group select {width: 80px;}
-	.guess-button {
+	.inputGrp select {width: 80px;}
+	.submitBtn {
 		background: #2196F3;
 		color: white;
 		border: none;
@@ -75,7 +69,7 @@
 		cursor: pointer;
 		margin: 0 10px;
 	}
-	.guess-button:hover {background: #1976D2;}
+	.submitBtn:hover {background: #1976D2;}
 	.feedback {
 		margin: 20px 0;
 		padding: 15px;
@@ -97,30 +91,39 @@
 		color: #ffc107;
 		border: 1px solid #6d5a30;
 	}
-	.stats {
-		text-align: center;
-		margin-top: 20px;
+	.stats {text-align: center; margin-top: 20px;}
+	@media (max-height: 600px) {
+		body {padding: 10px;}
+		.gameContainer {padding: 10px;}
+		.displayColour {width: 150px; height: 150px; margin: 10px auto;}
+		.diffSelect {margin-bottom: 10px;}
+		.inputs {margin: 10px 0;}
+		.inputGrp {margin: 5px 0;}
+		.feedback {margin: 10px 0; padding: 10px;}
+		.stats {margin-top: 10px;}
+		h1 {margin: 0 0 10px 0;}
 	}
 </style>
 </head>
 <body>
-<div class="game-container">
+<div class="gameContainer">
 	<h1 style="justify-self: center;">Guess My Colour Game</h1>
 	
-	<div class="difficulty-selector">
-		<button id="easy" class="active" onclick="setDifficulty('easy')">Easy</button>
+	<div class="diffSelect">
+		<button id="baby" class="active" onclick="setDifficulty('baby')">Baby</button>
+		<button id="easy" onclick="setDifficulty('easy')">Easy</button>
 		<button id="medium" onclick="setDifficulty('medium')">Medium</button>
 		<button id="hard" onclick="setDifficulty('hard')">Hard</button>
 		<button id="impossible" onclick="setDifficulty('impossible')">Impossible</button>
 	</div>
 	
-	<div class="color-display" id="colorDisplay"></div>
+	<div class="displayColour" id="colourDisplay"></div>
 	
-	<div class="input-section">
-		<div id="easyMode">
-			<div class="input-group">
-				<label>Color:</label>
-				<select id="colorSelect">
+	<div class="inputs">
+		<div id="babyMode">
+			<div class="inputGrp">
+				<label>Colour:</label>
+				<select id="colourSelect">
 					<option value="">Choose...</option>
 					<option value="red">Red</option>
 					<option value="blue">Blue</option>
@@ -139,27 +142,28 @@
 			</div>
 		</div>
 		
-		<div id="rgbMode" style="display: none;">
-			<div class="input-group">
-				<label>R:</label>
-				<input type="number" id="redInput" min="0" max="255" placeholder="0-255">
-				<label>G:</label>
-				<input type="number" id="greenInput" min="0" max="255" placeholder="0-255">
-				<label>B:</label>
-				<input type="number" id="blueInput" min="0" max="255" placeholder="0-255">
-			</div>
-			<div class="input-group" id="hslInputs" style="display: none;">
-				<label>H:</label>
-				<input type="number" id="hueInput" min="0" max="360" placeholder="0-360">
-				<label>S:</label>
-				<input type="number" id="satInput" min="0" max="100" placeholder="0-100">
-				<label>L:</label>
-				<input type="number" id="lightInput" min="0" max="100" placeholder="0-100">
+		<div id="wavelengthMode" style="display: none;">
+			<div class="inputGrp">
+				<label>Wavelength:</label>
+				<input type="number" id="wavelengthInput" min="400" max="750" placeholder="400-750">
 			</div>
 		</div>
 		
-		<button class="guess-button" onclick="makeGuess()">Make Guess</button>
-		<button class="guess-button" onclick="newGame()">New Color</button>
+		<div id="rgbMode" style="display: none;">
+			<div class="inputGrp">
+				<label>R:</label><input type="number" id="redInput" min="0" max="255" placeholder="0-255">
+				<label>G:</label><input type="number" id="greenInput" min="0" max="255" placeholder="0-255">
+				<label>B:</label><input type="number" id="blueInput" min="0" max="255" placeholder="0-255">
+			</div>
+			<div class="inputGrp" id="hslInputs" style="display: none;">
+				<label>H:</label><input type="number" id="hueInput" min="0" max="360" placeholder="0-360">
+				<label>S:</label><input type="number" id="satInput" min="0" max="100" placeholder="0-100">
+				<label>L:</label><input type="number" id="lightInput" min="0" max="100" placeholder="0-100">
+			</div>
+		</div>
+		
+		<button class="submitBtn" id="guessButton" onclick="makeGuess()">Make Guess</button>
+		<button class="submitBtn" onclick="newGame()">New Colour</button>
 	</div>
 	
 	<div id="feedback" class="feedback" style="display: none;"></div>
@@ -170,9 +174,9 @@
 </div>
 
 <script>
-	let currentColor = {r: 0, g: 0, b: 0, h: 0, s: 0, l: 0}, difficulty = 'easy', scoreValue = 0, attempts = 0;
+	let currentColour = {r: 0, g: 0, b: 0, h: 0, s: 0, l: 0}, difficulty = 'baby', scoreValue = 0, attempts = 0;
 
-	let colorMap = {
+	let colourMap = {
 		red: {r: 255, g: 0, b: 0},
 		blue: {r: 0, g: 0, b: 255},
 		green: {r: 0, g: 128, b: 0},
@@ -189,22 +193,23 @@
 	};
 
 	function setDifficulty(mode) {
-		document.querySelectorAll('.difficulty-selector button').forEach(btn => btn.classList.remove('active'));
+		document.querySelectorAll('.diffSelect button').forEach(btn => btn.classList.remove('active'));
 		window[mode].classList.add('active');
-		easyMode.style.display = mode === 'easy' ? 'block' : 'none';
-		rgbMode.style.display = (mode !== 'easy') ? 'block' : 'none';
+		babyMode.style.display = mode === 'baby' ? 'block' : 'none';
+		wavelengthMode.style.display = mode === 'easy' ? 'block' : 'none';
+		rgbMode.style.display = (mode !== 'baby' && mode !== 'easy') ? 'block' : 'none';
 		hslInputs.style.display = (mode === 'hard' || mode === 'impossible') ? 'block' : 'none';
 		difficulty = mode;
 		newGame();
 	}
 
-	function generateRandomColor() {
-		if (difficulty === 'easy') {
-			let colorNames = Object.keys(colorMap);
-			let randomColorName = colorNames[Math.floor(Math.random() * colorNames.length)];
-			let color = colorMap[randomColorName];
-			let hsl = rgbToHsl(color.r, color.g, color.b);
-			return {r: color.r, g: color.g, b: color.b, h: 0, s: 100, l: 100, name: randomColorName};
+	function generateRandomColour() {
+		if (difficulty === 'baby') {
+			let colourNames = Object.keys(colourMap);
+			let randomColourName = colourNames[Math.floor(Math.random() * colourNames.length)];
+			let colour = colourMap[randomColourName];
+			let hsl = rgbToHsl(colour.r, colour.g, colour.b);
+			return {r: colour.r, g: colour.g, b: colour.b, h: 0, s: 100, l: 100, name: randomColourName};
 		} 
 		else {
 			let r = Math.floor(Math.random() * 256);
@@ -233,42 +238,67 @@
 		return {h, s: s * 100, l: l * 100};
 	}
 
+	function rgbToWavelength(r, g, b) {
+		let hsl = rgbToHsl(r, g, b);
+		let h = hsl.h;
+		let wavelength;
+		if (h < 60) wavelength = 750 - h * (750 - 600) / 60;
+		else if (h < 120) wavelength = 600 - (h - 60) * (600 - 530) / 60;
+		else if (h < 180) wavelength = 530 - (h - 120) * (530 - 480) / 60;
+		else if (h < 240) wavelength = 480 - (h - 180) * (480 - 430) / 60;
+		else if (h < 300) wavelength = 430 + (h - 240) * (480 - 430) / 60;
+		else wavelength = 480 + (h - 300) * (750 - 480) / 60;
+		return Math.round(Math.max(400, Math.min(750, wavelength)));
+	}
+
 	function newGame() {
-		currentColor = generateRandomColor();
-		colorDisplay.style.backgroundColor = `rgb(${currentColor.r},${currentColor.g},${currentColor.b})`;
+		currentColour = generateRandomColour();
+		colourDisplay.style.backgroundColor = `rgb(${currentColour.r},${currentColour.g},${currentColour.b})`;
 		feedback.style.display = 'none';
-		colorSelect.value = redInput.value = greenInput.value = blueInput.value = hueInput.value = satInput.value = lightInput.value = '';
+		colourSelect.value = redInput.value = greenInput.value = blueInput.value = hueInput.value = satInput.value = lightInput.value = wavelengthInput.value = '';
+		guessButton.style.display = 'inline-block';
 	}
 
 	function makeGuess() {
-		   attempts++;
-		   attemptsDisplay.textContent = attempts;
-		   let isCorrect = false;
-		   if (difficulty === 'easy') {
-			   let guess = colorSelect.value;
-			   if (!guess) return showFeedback('Please select a color!', 'incorrect');
-			   isCorrect = guess === currentColor.name;
-		   } else {
-			   let r = parseInt(redInput.value) || 0, g = parseInt(greenInput.value) || 0, b = parseInt(blueInput.value) || 0;
-			   if (difficulty === 'medium') {
-				   isCorrect = r === currentColor.r && g === currentColor.g && b === currentColor.b;
-			   } else {
-				   let h = parseInt(hueInput.value) || 0, s = parseInt(satInput.value) || 0, l = parseInt(lightInput.value) || 0;
-				   isCorrect = r === currentColor.r && g === currentColor.g && b === currentColor.b && h === currentColor.h && s === currentColor.s && l === currentColor.l;
-			   }
-		   }
-		   if (isCorrect) {
-			   scoreValue++;
-			   score.textContent = scoreValue;
-			   let correctAnswer = difficulty === 'easy' ? `Correct! It was ${currentColor.name}!` :
-				   difficulty === 'medium' ? `Correct! RGB(${currentColor.r}, ${currentColor.g}, ${currentColor.b})` :
-				   `Correct! RGB(${currentColor.r}, ${currentColor.g}, ${currentColor.b}) HSL(${currentColor.h}, ${currentColor.s}%, ${currentColor.l}%)`;
-			   showFeedback(correctAnswer, 'correct');
-		   } else {
-			   if (difficulty === 'easy') showFeedback('Are you colourblind?', 'hint');
-			   else if (difficulty === 'impossible') showFeedback(getImpossibleModeFeedback(), 'hint');
-			   else showFeedback(getFarthestOffFeedback(), 'hint');
-		   }
+			attempts++;
+			attemptsDisplay.textContent = attempts;
+			let isCorrect = false;
+			if (difficulty === 'baby') {
+				let guess = colourSelect.value;
+				if (!guess) return showFeedback('Please select a colour!', 'incorrect');
+				isCorrect = guess === currentColour.name;
+			} else if (difficulty === 'easy') {
+				let guess = parseInt(wavelengthInput.value);
+				if (!guess) return showFeedback('Please enter wavelength!', 'incorrect');
+				let actual = rgbToWavelength(currentColour.r, currentColour.g, currentColour.b);
+				isCorrect = guess === actual;
+			} else {
+				let r = parseInt(redInput.value) || 0, g = parseInt(greenInput.value) || 0, b = parseInt(blueInput.value) || 0;
+				if (difficulty === 'medium') isCorrect = r === currentColour.r && g === currentColour.g && b === currentColour.b;
+				else {
+					let h = parseInt(hueInput.value) || 0, s = parseInt(satInput.value) || 0, l = parseInt(lightInput.value) || 0;
+					isCorrect = r === currentColour.r && g === currentColour.g && b === currentColour.b && h === currentColour.h && s === currentColour.s && l === currentColour.l;
+				}
+			}
+			if (isCorrect) {
+				scoreValue++;
+				score.textContent = scoreValue;
+				let correctAnswer = difficulty === 'baby' ? `Correct! It was ${currentColour.name}!` :
+					difficulty === 'easy' ? `Correct! Wavelength: ${rgbToWavelength(currentColour.r, currentColour.g, currentColour.b)}nm` :
+					difficulty === 'medium' ? `Correct! RGB(${currentColour.r}, ${currentColour.g}, ${currentColour.b})` :
+					`Correct! RGB(${currentColour.r}, ${currentColour.g}, ${currentColour.b}) HSL(${currentColour.h}, ${currentColour.s}%, ${currentColour.l}%)`;
+				showFeedback(correctAnswer, 'correct');
+				guessButton.style.display = 'none';
+			} else {
+				if (difficulty === 'baby') showFeedback('Are you colourblind?', 'hint');
+				else if (difficulty === 'easy') {
+					let guess = parseInt(wavelengthInput.value);
+					let actual = rgbToWavelength(currentColour.r, currentColour.g, currentColour.b);
+					showFeedback(guess > actual ? 'Too high' : 'Too low', 'hint');
+				} 
+				else if (difficulty === 'impossible') showFeedback(getImpossibleModeFeedback(), 'hint');
+				else showFeedback(getFarthestOffFeedback(), 'hint');
+			}
 	}
 
 	function getImpossibleModeFeedback() {
@@ -277,21 +307,21 @@
 		let s = parseInt(satInput.value) || 0, l = parseInt(lightInput.value) || 0;
 		let hints = [];
 		let diffs = [
-			{diff: currentColor.r - r, name: 'red'},
-			{diff: currentColor.g - g, name: 'green'},
-			{diff: currentColor.b - b, name: 'blue'}
+			{diff: currentColour.r - r, name: 'red'},
+			{diff: currentColour.g - g, name: 'green'},
+			{diff: currentColour.b - b, name: 'blue'}
 		];
 		if (diffs.some(d => Math.abs(d.diff) > 10)) {
 			let maxDiff = diffs.reduce((a, b) => Math.abs(a.diff) > Math.abs(b.diff) ? a : b);
-			let colorHint = '';
-			if (diffs[0].diff > 5 && diffs[1].diff > 5 && diffs[2].diff < -5) colorHint = 'yellow';
-			else if (diffs[0].diff > 5 && diffs[2].diff > 5 && diffs[1].diff < -5) colorHint = 'magenta';
-			else if (diffs[1].diff > 5 && diffs[2].diff > 5 && diffs[0].diff < -5) colorHint = 'cyan';
-			else colorHint = maxDiff.diff > 0 ? maxDiff.name :
+			let colourHint = '';
+			if (diffs[0].diff > 5 && diffs[1].diff > 5 && diffs[2].diff < -5) colourHint = 'yellow';
+			else if (diffs[0].diff > 5 && diffs[2].diff > 5 && diffs[1].diff < -5) colourHint = 'magenta';
+			else if (diffs[1].diff > 5 && diffs[2].diff > 5 && diffs[0].diff < -5) colourHint = 'cyan';
+			else colourHint = maxDiff.diff > 0 ? maxDiff.name :
 				maxDiff.name === 'red' ? 'cyan' : maxDiff.name === 'green' ? 'magenta' : 'yellow';
-			hints.push(colorHint + 'er');
+			hints.push(colourHint + 'er');
 		}
-		let hDiff = currentColor.h - h, sDiff = currentColor.s - s, lDiff = currentColor.l - l;
+		let hDiff = currentColour.h - h, sDiff = currentColour.s - s, lDiff = currentColour.l - l;
 		let adjustedHDiff = Math.abs(hDiff) > 180 ? (hDiff > 0 ? hDiff - 360 : hDiff + 360) : hDiff;
 		if (adjustedHDiff > 10) hints.push('hueer');
 		else if (adjustedHDiff < -10) hints.push('unhueer');
@@ -306,9 +336,9 @@
 		if (difficulty === 'medium') {
 			let r = parseInt(redInput.value) || 0, g = parseInt(greenInput.value) || 0, b = parseInt(blueInput.value) || 0;
 			let diffs = [
-				{name: 'red', diff: Math.abs(r - currentColor.r), guess: r, actual: currentColor.r},
-				{name: 'green', diff: Math.abs(g - currentColor.g), guess: g, actual: currentColor.g},
-				{name: 'blue', diff: Math.abs(b - currentColor.b), guess: b, actual: currentColor.b}
+				{name: 'red', diff: Math.abs(r - currentColour.r), guess: r, actual: currentColour.r},
+				{name: 'green', diff: Math.abs(g - currentColour.g), guess: g, actual: currentColour.g},
+				{name: 'blue', diff: Math.abs(b - currentColour.b), guess: b, actual: currentColour.b}
 			];
 			let farthest = diffs.reduce((max, val) => val.diff > max.diff ? val : max);
 			return farthest.guess < farthest.actual ? `Not enough ${farthest.name}` : `Too much ${farthest.name}`;
@@ -316,31 +346,17 @@
 			let r = parseInt(redInput.value) || 0, g = parseInt(greenInput.value) || 0, b = parseInt(blueInput.value) || 0;
 			let h = parseInt(hueInput.value) || 0, s = parseInt(satInput.value) || 0, l = parseInt(lightInput.value) || 0;
 			let values = [
-				{name: 'red', diff: Math.abs(r - currentColor.r), guess: r, actual: currentColor.r},
-				{name: 'green', diff: Math.abs(g - currentColor.g), guess: g, actual: currentColor.g},
-				{name: 'blue', diff: Math.abs(b - currentColor.b), guess: b, actual: currentColor.b},
-				{name: 'hue', diff: Math.abs(h - currentColor.h), guess: h, actual: currentColor.h},
-				{name: 'saturation', diff: Math.abs(s - currentColor.s), guess: s, actual: currentColor.s},
-				{name: 'lightness', diff: Math.abs(l - currentColor.l), guess: l, actual: currentColor.l}
+				{name: 'red', diff: Math.abs(r - currentColour.r), guess: r, actual: currentColour.r},
+				{name: 'green', diff: Math.abs(g - currentColour.g), guess: g, actual: currentColour.g},
+				{name: 'blue', diff: Math.abs(b - currentColour.b), guess: b, actual: currentColour.b},
+				{name: 'hue', diff: Math.abs(h - currentColour.h), guess: h, actual: currentColour.h},
+				{name: 'saturation', diff: Math.abs(s - currentColour.s), guess: s, actual: currentColour.s},
+				{name: 'lightness', diff: Math.abs(l - currentColour.l), guess: l, actual: currentColour.l}
 			];
 			let farthest = values.reduce((max, val) => val.diff > max.diff ? val : max);
 			return farthest.guess < farthest.actual ? `Not enough ${farthest.name}` : `Too much ${farthest.name}`;
 		}
 		return '';
-	}
-
-	function getDominantColor(r, g, b) {
-		let max = Math.max(r, g, b), min = Math.min(r, g, b), delta = max - min;
-		if (delta === 0) return Math.random() < 0.5 ? 'red' : 'blue';
-		let hue = max === r ? ((g - b) / delta) % 6 : max === g ? (b - r) / delta + 2 : (r - g) / delta + 4;
-		hue = Math.round(hue * 60); if (hue < 0) hue += 360;
-		if (hue < 30) return 'red';
-		if (hue < 90) return 'yellow';
-		if (hue < 150) return 'green';
-		if (hue < 210) return 'cyan';
-		if (hue < 270) return 'blue';
-		if (hue < 330) return 'magenta';
-		return 'red';
 	}
 
 	function showFeedback(message, type) {

@@ -5,7 +5,7 @@
 		Answer is hidden until you hold down a button to reveal it
 	Vibe coded with Claude, and Gemini
 	Created by cswert
-	Last modified 9 Oct 2025-->
+	Last modified 11 Oct 2025-->
 <html lang="en">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -20,6 +20,7 @@
 		overflow: hidden;
 		display: flex;
 		flex-direction: column;
+		user-select: none;
 	}
 	.gameContainer {
 		background: rgba(255, 255, 255, 0.1);
@@ -32,13 +33,7 @@
 		border-radius: 15px;
 		overflow: hidden;
 	}
-	.mainContent {
-		display: flex;
-		flex: 1;
-		gap: 15px;
-		padding: 15px;
-		overflow: hidden;
-	}
+	.mainContent {display: flex; flex: 1; gap: 15px; padding: 15px; overflow: hidden;}
 	.canvasContainer {
 		flex: 1;
 		display: flex;
@@ -51,7 +46,7 @@
 		overflow: hidden;
 	}
 	.sidebar {
-		width: 250px;
+		width: 30%;
 		display: flex;
 		flex-direction: column;
 		gap: 15px;
@@ -96,16 +91,8 @@
 		padding: 15px;
 		border-radius: 10px;
 	}
-	.controlGroup {
-		display: flex;
-		flex-direction: column;
-		gap: 8px;
-	}
-	.controlGroup label {
-		font-weight: bold;
-		color: white;
-		font-size: 14px;
-	}
+	.controlGroup {display: flex; flex-direction: column; gap: 8px;}
+	.controlGroup label {font-weight: bold; color: white; font-size: 14px;}
 	.colorInput {
 		width: 60px;
 		height: 40px;
@@ -129,12 +116,7 @@
 		border-color: white;
 		transform: scale(1.02);
 	}
-	.drawingArea {
-		cursor: crosshair;
-		display: block;
-		width: 100%;
-		height: 100%;
-	}
+	.drawingArea {cursor: crosshair; display: block; width: 100%; height: 100%;}
 	h1 {
 		text-align: center;
 		margin: 0;
@@ -142,25 +124,10 @@
 		background: rgba(255, 255, 255, 0.05);
 		border-bottom: 2px solid rgba(255, 255, 255, 0.2);
 	}
-	.toolButtons {
-		display: grid;
-		grid-template-columns: 1fr 1fr;
-		gap: 8px;
-	}
-	select, input[type="checkbox"] {
-		cursor: pointer;
-	}
-	.checkboxGroup {
-		display: flex;
-		align-items: center;
-		gap: 8px;
-	}
-	.colorSizeWrapper {
-		display: grid;
-		grid-template-columns: auto 1fr;
-		gap: 12px;
-		align-items: start;
-	}
+	.toolButtons {display: grid; gap: 8px; grid-template-columns: 1fr 1fr;}
+	select, input[type="checkbox"] {cursor: pointer;}
+	.checkboxGroup {display: flex; align-items: center; gap: 8px;}
+	.colorSizeWrapper {display: grid; gap: 12px; align-items: start; grid-template-columns: auto 1fr;}
 	.timerInfo {
 		text-align: center;
 		margin-top: 15px;
@@ -168,7 +135,14 @@
 		color: rgba(255, 255, 255, 0.8);
 	}
 	option{color: black;}
+	@media (max-width: 768px) {
+		.colorSizeWrapper {grid-template-columns: 1fr;}
+		.toolButtons {grid-template-columns: 1fr;}
+		.revealBtn {font-size: 12px; padding: 8px;}
+		.answerInput {font-size: 14px; padding: 8px;}
+	}
 </style>
+
 <body>
 <div class="gameContainer">
 	<h1>🎨 Disappearing Pictionary</h1>
@@ -182,7 +156,7 @@
 						id="answerInput" 
 						class="answerInput" 
 						placeholder="Enter answer...">
-				<button id="revealBtn" class="revealBtn">Reveal Answer</button>
+				<button id="revealBtn" class="revealBtn">Reveal</button>
 			</div>
 			<div class="controls">
 				<div class="colorSizeWrapper">
@@ -237,17 +211,17 @@
 		limitedInk = limitedInkCheckbox.checked;
 		if (limitedInk) inkLeft = maxInk;
 	});
-	
+
 	answerInput.addEventListener('input', () => {
 		if (!isRevealed && answerInput.type === 'password') originalAnswer = answerInput.value;
 	});
-	
+
 	let revealAnswer = () => {
 		answerInput.type = 'password';
-		revealBtn.textContent = 'Reveal Answer';
+		revealBtn.textContent = 'Reveal';
 		isRevealed = false;
 	};
-	
+
 	revealBtn.addEventListener('mousedown', () => {
 		if (!isRevealed) {
 			answerInput.type = 'text';
@@ -256,19 +230,31 @@
 			isRevealed = true;
 		}
 	});
-	
+
 	revealBtn.addEventListener('mouseup', revealAnswer);
 	revealBtn.addEventListener('mouseleave', () => { if (isRevealed) revealAnswer(); });
-	
+
+	revealBtn.addEventListener('touchstart', () => {
+		if (!isRevealed) {
+			answerInput.type = 'text';
+			answerInput.value = originalAnswer;
+			revealBtn.textContent = 'Revealing...';
+			isRevealed = true;
+		}
+	});
+
+	revealBtn.addEventListener('touchend', revealAnswer);
+
 	colorPicker.addEventListener('change', () => currentColor = colorPicker.value);
-	
+	colorPicker.addEventListener('input', () => currentColor = colorPicker.value);
+
 	sizeSlider.addEventListener('input', () => {
 		currentSize = sizeSlider.value;
 		sizeDisplay.textContent = currentSize + 'px';
 	});
-	
+
 	fadeTimeSelect.addEventListener('change', () => fadeTime = parseInt(fadeTimeSelect.value));
-	
+
 	Object.keys(tools).forEach(toolName => {
 		tools[toolName].addEventListener('click', function() {
 			Object.values(tools).forEach(btn => btn.classList.remove('active'));
@@ -276,23 +262,33 @@
 			currentTool = toolName;
 		});
 	});
-	
-	['mousedown', 'mousemove', 'mouseup', 'mouseleave'].forEach((event, i) => {
-		drawingArea.addEventListener(event, [startDrawing, draw, stopDrawing, stopDrawing][i]);
-	});
-	
+
+	let getEventCoords = (e) => {
+		let touch = e.touches?.[0] || e.changedTouches?.[0];
+		return touch ? { x: touch.clientX, y: touch.clientY } : { x: e.clientX, y: e.clientY };
+	};
+
+	let eventMappings = [
+		['mousedown', startDrawing], ['mousemove', draw], ['mouseup', stopDrawing], ['mouseleave', stopDrawing],
+		['touchstart', startDrawing], ['touchmove', draw], ['touchend', stopDrawing]
+	];
+
+	eventMappings.forEach(([event, handler]) => {drawingArea.addEventListener(event, handler);});
+
 	let createSVGElement = (type, attrs) => {
 		let el = document.createElementNS('http://www.w3.org/2000/svg', type);
 		Object.entries(attrs).forEach(([key, val]) => el.setAttribute(key, val));
 		return el;
 	};
-	
+
 	function startDrawing(e) {
+		if (e.touches) e.preventDefault();
 		if (limitedInk && inkLeft <= 0) return;
 		isDrawing = true;
 		let rect = drawingArea.getBoundingClientRect();
-		startX = e.clientX - rect.left;
-		startY = e.clientY - rect.top;
+		let coords = getEventCoords(e);
+		startX = coords.x - rect.left;
+		startY = coords.y - rect.top;
 		if (currentTool === 'pen') {
 			let path = createSVGElement('path', {
 				d: `M ${startX} ${startY}`,
@@ -309,7 +305,7 @@
 			path.lastY = startY;
 		}
 	}
-	
+
 	let removeOldestElements = () => {
 		while (getTotalInkUsed() > maxInk && drawingElements.length > 0) {
 			let el = drawingElements.shift();
@@ -321,12 +317,14 @@
 			}
 		}
 	};
-	
+
 	function draw(e) {
+		if (e.touches) e.preventDefault();
 		if (!isDrawing) return;
 		let rect = drawingArea.getBoundingClientRect();
-		let currentX = e.clientX - rect.left;
-		let currentY = e.clientY - rect.top;
+		let coords = getEventCoords(e);
+		let currentX = coords.x - rect.left;
+		let currentY = coords.y - rect.top;
 		if (currentTool === 'pen') {
 			let path = drawingArea.lastElementChild;
 			if (path?.tagName === 'path') {
@@ -368,7 +366,7 @@
 			}
 		} else updateShapePreview(currentX, currentY);
 	}
-	
+
 	function updateShapePreview(currentX, currentY) {
 		previewElement?.remove();
 		let shapeConfig = {
@@ -404,15 +402,16 @@
 			drawingArea.appendChild(previewElement);
 		}
 	}
-	
+
 	function stopDrawing(e) {
 		if (!isDrawing) return;
 		isDrawing = false;
 		previewElement?.remove();
 		previewElement = null;
 		let rect = drawingArea.getBoundingClientRect();
-		let endX = e.clientX - rect.left;
-		let endY = e.clientY - rect.top;
+		let coords = getEventCoords(e);
+		let endX = coords.x - rect.left;
+		let endY = coords.y - rect.top;
 		
 		if (currentTool === 'pen') {
 			let path = drawingArea.lastElementChild;
@@ -470,7 +469,7 @@
 			}
 		}
 	}
-	
+
 	function scheduleElementRemoval(element, eraseFast) {
 		setTimeout(() => {
 			if (element.parentNode) {
