@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<!-- Pick some squares to find the flags, avoid the bombs
+		Find all flags to win, find all bombs to lose
+		Choose the size of the board and flag/bomb count
+		Winstreaks and explosions
+	Vibe coded with Claude
+	Created by cswert
+	Last modified 2 Nov 2025-->
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Capture the Flag</title>
+<style>
+	body {
+		margin: 0;
+		padding: 20px;
+		background: linear-gradient(135deg, #0d1b0d 0%, #1a2e1a 100%);
+		color: #7fd87f;
+		font-family: 'Courier New', monospace;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		min-height: 100vh;
+		user-select: none;
+	}
+	h1 {
+		margin: 10px 0 20px 0;
+		font-size: 2.5rem;
+		color: #4dff4d;
+		text-shadow: 0 0 15px #00ff00, 0 0 30px #00aa00;
+		letter-spacing: 3px;
+	}
+	#controls {
+		background: rgba(13, 40, 13, 0.8);
+		border: 2px solid #3a7a3a;
+		border-radius: 8px;
+		padding: 15px 25px;
+		margin-bottom: 20px;
+		box-shadow: 0 4px 20px rgba(0, 255, 0, 0.2);
+		display: flex;
+		gap: 15px;
+		flex-wrap: wrap;
+		align-items: center;
+		justify-content: center;
+	}
+	label {color: #7fd87f; font-weight: bold; margin-right: 5px;}
+	input {
+		background: #0d2d0d;
+		color: #4dff4d;
+		border: 1px solid #3a7a3a;
+		padding: 5px 10px;
+		border-radius: 4px;
+		font-family: 'Courier New', monospace;
+		font-size: 14px;
+	}
+	button {
+		background: #2a5a2a;
+		color: #4dff4d;
+		border: 2px solid #3a7a3a;
+		padding: 8px 20px;
+		border-radius: 6px;
+		cursor: pointer;
+		font-family: 'Courier New', monospace;
+		font-size: 16px;
+		font-weight: bold;
+		transition: all 0.3s;
+		text-shadow: 0 0 5px #00ff00;
+	}
+	button:hover {background: #3a7a3a; box-shadow: 0 0 15px #00ff00; transform: scale(1.05);}
+	#stats {
+		background: rgba(13, 40, 13, 0.8);
+		border: 2px solid #3a7a3a;
+		border-radius: 8px;
+		padding: 12px 25px;
+		margin-bottom: 20px;
+		font-size: 1.2rem;
+		color: #4dff4d;
+		text-align: center;
+		box-shadow: 0 4px 20px rgba(0, 255, 0, 0.2);
+		min-width: 400px;
+	}
+	#board {
+		display: grid;
+		gap: 4px;
+		background: #0d2d0d;
+		padding: 10px;
+		border: 3px solid #3a7a3a;
+		border-radius: 10px;
+		box-shadow: 0 0 30px rgba(0, 255, 0, 0.3);
+	}
+	.tile {
+		width: 50px;
+		height: 50px;
+		background: linear-gradient(135deg, #1a3d1a 0%, #2a5a2a 100%);
+		border: 2px solid #3a7a3a;
+		border-radius: 5px;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		font-size: 1.8rem;
+		cursor: pointer;
+		transition: all 0.2s;
+		box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
+	}
+	.tile:hover {
+		background: linear-gradient(135deg, #2a5a2a 0%, #3a7a3a 100%);
+		box-shadow: 0 0 15px #00ff00;
+		transform: scale(1.1);
+	}
+	.revealed {background: linear-gradient(135deg, #0d2d0d 0%, #1a3d1a 100%); cursor: default;}
+	.revealed:hover {transform: none; box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);}
+	.flag {animation: flagPulse 0.5s;}
+	.bomb {
+		animation: explode 0.5s;
+		background: radial-gradient(circle, #ff4d4d 0%, #8b0000 100%);
+		border-color: #ff0000;
+	}
+	@keyframes flagPulse {
+		0%, 100% { transform: scale(1); }
+		50% { transform: scale(1.3); }
+	}
+	@keyframes explode {
+		0% { transform: scale(1); opacity: 1; }
+		50% { transform: scale(1.5); opacity: 0.8; }
+		100% { transform: scale(1); opacity: 1; }
+	}
+	.gameOver {
+		position: fixed;
+		top: 50%;
+		left: 50%;
+		transform: translate(-50%, -50%);
+		background: rgba(0, 0, 0, 0.95);
+		border: 4px solid #3a7a3a;
+		border-radius: 15px;
+		padding: 40px 60px;
+		text-align: center;
+		box-shadow: 0 0 50px rgba(0, 255, 0, 0.5);
+		z-index: 1000;
+		animation: slideIn 0.5s;
+	}
+	@keyframes slideIn {
+		from { transform: translate(-50%, -150%); }
+		to { transform: translate(-50%, -50%); }
+	}
+	.gameOver h2 {
+		font-size: 3rem;
+		margin: 0 0 20px 0;
+		color: #4dff4d;
+		text-shadow: 0 0 20px #00ff00;
+	}
+	.gameOver p {font-size: 1.5rem; margin: 10px 0; color: #7fd87f;}
+</style>
+</head>
+<body>
+	<h1>⚑ CAPTURE THE FLAG ⚑</h1>
+	<div id="controls">
+		<div>
+			<label>Size:</label>
+			<input type="number" id="sizeSelect" min="3" max="10" value="5">
+		</div>
+		<div>
+			<label>Flags:</label>
+			<input type="number" id="flagCount" min="1" max="100" value="2">
+		</div>
+		<div>
+			<label>Bombs:</label>
+			<input type="number" id="bombCount" min="1" max="100" value="3">
+		</div>
+		<button onclick="newGame()">NEW GAME</button>
+	</div>
+	<div id="stats">
+		Flags: <span id="flagsFound">0</span>/<span id="totalFlags">0</span> | 
+		Bombs: <span id="bombsHit">0</span>/<span id="totalBombs">0</span> | 
+		Streak: <span id="winStreak">0</span>
+	</div>
+	<div id="board"></div>
+</body>
+<script>
+	let gridSize, numFlags, numBombs;
+	let tiles = [], flagPositions = [], bombPositions = [];
+	let flagsFoundCount = 0, bombsHitCount = 0, streakCount = 0, gameActive = true;
+
+	function newGame() {
+		gridSize = parseInt(sizeSelect.value);
+		numFlags = parseInt(flagCount.value);
+		numBombs = parseInt(bombCount.value);
+		let totalTiles = gridSize * gridSize;
+		if (numFlags + numBombs > totalTiles) {
+			numBombs = totalTiles - numFlags;
+			if (numBombs < 0) {
+				numFlags = totalTiles;
+				numBombs = 0;
+			}
+			flagCount.value = numFlags;
+			bombCount.value = numBombs;
+		}
+		tiles = [];
+		flagPositions = [];
+		bombPositions = [];
+		flagsFoundCount = 0;
+		bombsHitCount = 0;
+		gameActive = true;
+		let allPositions = [];
+		for (let i = 0; i < gridSize * gridSize; i++) {allPositions.push(i);}
+		for (let i = allPositions.length - 1; i > 0; i--) {
+			let j = Math.floor(Math.random() * (i + 1));
+			[allPositions[i], allPositions[j]] = [allPositions[j], allPositions[i]];
+		}
+		flagPositions = allPositions.slice(0, numFlags);
+		bombPositions = allPositions.slice(numFlags, numFlags + numBombs);
+		board.innerHTML = '';
+		board.style.gridTemplateColumns = `repeat(${gridSize}, 50px)`;
+		for (let i = 0; i < gridSize * gridSize; i++) {
+			let tile = document.createElement('div');
+			tile.className = 'tile';
+			tile.onclick = () => revealTile(i);
+			board.appendChild(tile);
+			tiles.push(tile);
+		}
+		totalFlags.textContent = numFlags;
+		totalBombs.textContent = numBombs;
+		flagsFound.textContent = '0';
+		bombsHit.textContent = '0';
+		winStreak.textContent = streakCount;
+		let existingOverlay = document.body.lastChild;
+		if (existingOverlay && existingOverlay.className === 'gameOver') document.body.removeChild(existingOverlay);
+	}
+
+	function revealTile(index) {
+		if (!gameActive || tiles[index].classList.contains('revealed')) return;
+		tiles[index].classList.add('revealed');
+		if (flagPositions.includes(index)) {
+			tiles[index].textContent = '⚑';
+			tiles[index].classList.add('flag');
+			flagsFoundCount++;
+			flagsFound.textContent = flagsFoundCount;
+			if (flagsFoundCount === numFlags) {
+				gameActive = false;
+				streakCount++;
+				winStreak.textContent = streakCount;
+				setTimeout(() => showGameOver(true), 500);
+			}
+		} 
+		else if (bombPositions.includes(index)) {
+			tiles[index].textContent = '💣';
+			tiles[index].classList.add('bomb');
+			bombsHitCount++;
+			bombsHit.textContent = bombsHitCount;
+			if (bombsHitCount === numBombs) {
+				gameActive = false;
+				streakCount = 0;
+				winStreak.textContent = streakCount;
+				setTimeout(() => showGameOver(false), 500);
+			}
+		} 
+		else tiles[index].textContent = 'X';
+	}
+
+	function showGameOver(won) {
+		let overlay = document.createElement('div');
+		overlay.className = 'gameOver';
+		if (won) overlay.innerHTML = `<h2>🎉 VICTORY 🎉</h2><p>All flags captured!</p>
+			<p>Win Streak: ${streakCount}</p><button onclick="newGame()">PLAY AGAIN</button>`;
+		else overlay.innerHTML = `<h2>💥 GAME OVER 💥</h2><p>All bombs triggered!</p>
+			<p>Streak reset to 0</p><button onclick="newGame()">TRY AGAIN</button>`;
+		document.body.appendChild(overlay);
+	}
+
+	newGame();
+</script>
+</html>

@@ -213,7 +213,7 @@
 			
 		</div>
 </div>
-
+</body>
 <script>
 	let gameOptions = {
 		fogOfWar: false,
@@ -424,37 +424,7 @@
 	
 	let gameState = [];
 	let rng = Math.random; // Default to Math.random
-	
-	function getBoardWidth() {
-		if (gameOptions.gameMode === 'siege') return 16;
-		
-		if (gameOptions.playerArmyType === 'chess' && gameOptions.enemyArmyType === 'chess') return 8;
-		if (gameOptions.playerArmyType === 'shogi' && gameOptions.enemyArmyType === 'shogi') return 9;
-		return 8; // Mixed mode: 8 wide
-	}
-	
-	function getBoardHeight() {
-		if (gameOptions.gameMode === 'siege') return 16;
-		
-		if (gameOptions.playerArmyType === 'chess' && gameOptions.enemyArmyType === 'chess') return 8;
-		if (gameOptions.playerArmyType === 'shogi' && gameOptions.enemyArmyType === 'shogi') return 9;
-		return 9; // Mixed mode: 9 tall
-	}
-	
-	function setBoardSize(mode) {
-		if (mode === 'siege') {
-			gameOptions.boardSize = 16;
-			board.style.gridTemplateColumns = 'repeat(16, 50px)';
-			board.style.gridTemplateRows = 'repeat(16, 50px)';
-		} else if (mode === 'standard') {
-			let width = getBoardWidth();
-			let height = getBoardHeight();
-			
-			gameOptions.boardSize = Math.max(width, height); // Use larger dimension for array size
-			board.style.gridTemplateColumns = `repeat(${width}, 50px)`;
-			board.style.gridTemplateRows = `repeat(${height}, 50px)`;
-		}
-	}
+
 	
 	function seededRandom(seed) {
 		let x = Math.sin(seed) * 10000;
@@ -740,9 +710,27 @@
 	renderBoard();
 	initializeLegend();
 
+	
+	function setBoardSize(mode) {
+		if (mode === 'siege') {
+			gameOptions.boardSize = 16;
+			board.style.gridTemplateColumns = 'repeat(16, 50px)';
+			board.style.gridTemplateRows = 'repeat(16, 50px)';
+		} 
+		else if (mode === 'standard') {
+			let width = 8;
+			if (gameOptions.playerArmyType === 'shogi' && gameOptions.enemyArmyType === 'shogi') return 9;
+			let height = 9;
+			if (gameOptions.playerArmyType === 'chess' && gameOptions.enemyArmyType === 'chess') return 8;
+			
+			gameOptions.boardSize = Math.max(width, height); // Use larger dimension for array size
+			board.style.gridTemplateColumns = `repeat(${width}, 50px)`;
+			board.style.gridTemplateRows = `repeat(${height}, 50px)`;
+		}
+	}
+
 	// NEW board generation methods
 	function generateBoard() {
-		// Remove any previous generated container children
 		let existing = board.querySelector('.boardContainer');
 		if (existing) existing.remove();
 
@@ -767,9 +755,7 @@
 			for (let col = 0; col < boardSize; col++) {
 				let tile = document.createElement('div');
 				tile.className = 'squareTile tile';
-				// Checkerboard pattern
 				tile.classList.add((row + col) % 2 === 0 ? 'light' : 'dark');
-				// Position from center
 				let boardX = col - centerOffset;
 				let boardY = row - centerOffset;
 				tile.style.left = (col * tileSize) + 'px';
@@ -789,6 +775,7 @@
 	// Generate hexagonal board (expands from center)
 	function generateHexagonBoard(size) {
 		let radius = gameOptions.gameMode === 'unlimited' ? 100 : size;
+		radius = 10;
 		let hexWidth = 45;
 		let hexHeight = 55;
 		let wrapper = document.createElement('div');
@@ -796,18 +783,15 @@
 		wrapper.style.position = 'relative';
 		wrapper.style.minWidth = `${hexWidth * radius}px`;
 		wrapper.style.minHeight = `${hexHeight * radius}px`;
-		// Axial coordinates for hexagon
 		for (let q = -radius; q <= radius; q++) {
 			let r1 = Math.max(-radius, -q - radius);
 			let r2 = Math.min(radius, -q + radius);
 			for (let r = r1; r <= r2; r++) {
 				let tile = document.createElement('div');
 				tile.className = 'hexagonTile tile';
-				// Color pattern for hexagons (3 colors)
 				let colorIndex = (q - r) % 3;
 				if (colorIndex < 0) colorIndex += 3;
 				tile.classList.add(colorIndex === 0 ? 'light' : colorIndex === 1 ? 'dark' : 'medium');
-				// Convert axial to pixel coordinates
 				let x = hexWidth * (q + r / 2);
 				let y = hexHeight * .85 * r * 0.866;
 				tile.style.left = (400 + x) + 'px';
@@ -822,5 +806,4 @@
 		return wrapper;
 	}
 </script>
-</body>
 </html>

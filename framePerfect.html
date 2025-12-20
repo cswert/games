@@ -6,7 +6,7 @@
 		Custom Keyboard and gamepad support
 	Vibe coded with Claude
 	Created by cswert
-	Last modified 24 Oct 2025-->
+	Last modified 19 Dec 2025-->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Frame Perfect</title>
@@ -508,15 +508,14 @@
 			let gamepads = navigator.getGamepads();
 			for (let gamepad of gamepads) {
 				if (!gamepad) continue;
-				gamepad.buttons.forEach((button, index) => {
-					if (keyPress["gp" + index] !== button.pressed) keyPress["gp" + index] = button.pressed;
-				});
+				gamepad.buttons.forEach((button, index) => {keyPress["gp" + index] = button.pressed;});
 				gamepad.axes.forEach((axis, index) => {
 					if (axis < -deadZone) keyPress["gpa" + index + "n"] = true;
-					else if (axis > deadZone) keyPress["gpa" + index + "p"] = true;
-					else if (axis > -deadZone) keyPress["gpa" + index + "n"] = false;
-					else if (axis < deadZone) keyPress["gpa" + index + "p"] = false;
+					else keyPress["gpa" + index + "n"] = false;
+					if (axis > deadZone) keyPress["gpa" + index + "p"] = true;
+					else keyPress["gpa" + index + "p"] = false;
 				});
+				break;
 			}
 		}, 16)
 	});

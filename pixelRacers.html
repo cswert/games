@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="en">
+<!-- A top down 2D racer where the faster you go the smaller you get.
+		Top speed is 1px in size, try to fit through gaps
+		Courses are randomly generated (from seed)
+		Sections of course have different frictions and hazards
+	Vibe coded with Claude
+	Created by cswert
+	Last modified 19 Dec 2025-->
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pixel Racers</title>
+<style>
+	body {
+		margin: 0;
+		padding: 0;
+		background: #0a0a0a;
+		color: #ff2020;
+		font-family: Arial, sans-serif;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		min-height: 100vh;
+		user-select: none;
+		overflow: hidden;
+	}
+	h1 {margin:0 0 5px 0; font-size: 2rem; color: #ff3030; text-shadow: 0 0 10px #ff0000;}
+	#track {
+		position: relative;
+		width: 90%;
+		height: 85vh;
+		border: 3px solid #ff0000;
+		box-shadow: 0 0 20px #ff0000;
+		background: #1a1a1a;
+		overflow: hidden;
+	}
+	.trackPiece {position: absolute;}
+	.player {position: absolute; z-index: 1;}
+	.marker {position: absolute; z-index: 2; border: 2px solid; pointer-events: none;}
+	#controls {
+		margin-top: 5px;
+		display: flex;
+		flex-wrap: wrap;
+		gap: 8px;
+		align-items: center;
+		justify-content: center;
+		max-width: 90%;
+		font-size: 0.9rem;
+	}
+	select, input[type="number"] {
+		padding: 6px 10px;
+		background: #2a2a2a;
+		color: #ff5050;
+		border: 2px solid #ff4040;
+		border-radius: 4px;
+		font-size: 0.9rem;
+		cursor: pointer;
+	}
+	input[type="number"] {width: 80px;}
+	input[type="checkbox"] {width: 16px; height: 16px; cursor: pointer; accent-color: #ff0000;}
+	button {
+		padding: 8px 16px;
+		background: #ff0000;
+		color: #fff;
+		border: 2px solid #ff4040;
+		border-radius: 5px;
+		cursor: pointer;
+		font-size: 0.9rem;
+		transition: all 0.3s;
+	}
+	button:hover {background: #ff3030; box-shadow: 0 0 10px #ff0000;}
+	#stats {
+		margin-top: 8px;
+		font-size: 0.95rem;
+		color: #ff5050;
+		display: flex;
+		flex-wrap: wrap;
+		gap: 12px;
+		justify-content: center;
+	}
+	#countdown {
+		position: fixed;
+		top: 50%;
+		left: 50%;
+		transform: translate(-50%, -50%);
+		font-size: 10rem;
+		font-weight: bold;
+		z-index: 100;
+		pointer-events: none;
+		opacity: 0;
+		transition: opacity 0.3s;
+		background: linear-gradient(90deg, transparent, black, black, black, transparent);
+		padding: 0px 50px 0 50px;
+	}
+</style>
+</head>
+<body>
+	<h1>🏎️ Pixel Racers</h1>
+	<div id="track"></div>
+	<div id="countdown"></div>
+	<div id="controls">
+		<select id="gameMode">
+			<option>Standard</option>
+			<option>Maze Runner</option>
+			<option>Auto Scroll</option>
+		</select>
+		Seed:<input type="number" id="seedInput">
+		<input type="checkbox" id="overlap">No Overlap
+		<input type="checkbox" id="enableHazards" checked>Hazards
+		<input type="checkbox" id="loop">Loop Back
+		<button onclick="resetGame()">New Track</button>
+	</div>
+	<div id="stats"></div>
+</body>
+<script>
+	let colours = ['#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff', '#00ffff', '#ffffff', '#000000'],
+		keys = {}, gameInterval = null, trackPieces, checkpoints, hazards, raceActive = false,
+		countdownTimers = [], raceStartTime = 0, roadDirection = 0, baseRoadSpeed = 1;
+	let terrainTypes = [
+		{name: 'normal', clr: '#2a2a2a', fric: 0.96},
+		{name: 'ice', clr: '#88ddff', fric: 0.999},
+		{name: 'sand', clr: '#ddaa44', fric: 0.8},
+		{name: 'grass', clr: '#44aa44', fric: 0.875},
+		{name: 'mud', clr: '#553311', fric: 0.7},
+		{name: 'oil', clr: '#222222', fric: 0.99}
+	];
+	let players = [
+		{up:'ArrowUp', dn:'ArrowDown', lt:'ArrowLeft', rt:'ArrowRight'},
+		{up:'w', dn:'s', lt:'a', rt:'d'},
+		{up:'i', dn:'k', lt:'j', rt:'l'},
+		{up:'8', dn:'5', lt:'4', rt:'6'},
+		{up:'gp3', dn:'gp0', lt:'gp2', rt:'gp1'},
+		{up: 'gpa1n', dn: 'gpa1p', lt: 'gpa0n', rt: 'gpa0p'},
+		{up: 'gp12', dn: 'gp13', lt: 'gp14', rt: 'gp15'},
+		{up: 'gpa3n', dn: 'gpa3p', lt: 'gpa2n', rt: 'gpa2p'}
+	];
+
+	function generateTrack() {
+		let seed = seedInput.value || Math.floor(Math.random() * 999999);
+		seedInput.placeholder = seed;
+		function seededRandom() {
+			seed = (seed * 9301 + 49297) % 233280;
+			return seed / 233280;
+		}
+		let dir = Math.floor(seededRandom() * 4); // 0=up, 1=down, 2=left, 3=right
+		let tWidth = 80, maxX = track.clientWidth, maxY = track.clientHeight, mode = gameMode.value;
+			trackPieces = [{x: (mode != "Standard") ? maxX*.5 : maxX*seededRandom(), 
+				y: (mode != "Standard") ? maxY*.5 : maxY*seededRandom(), 
+				clr: "yellow", fric: 0.96, w: (dir < 2) ? 80 : 5, h: (dir < 2) ? 5 : 80, d: dir}];
+		for (let i = 0; i < 100; i++) {
+			for (let j = 0; j < (mode == "Maze Runner" ? 100*seededRandom() : 1); j++) {
+				let last = JSON.parse(JSON.stringify(trackPieces[trackPieces.length-1]));
+				let length = 100 + seededRandom() * 400;
+				if (i == 0) { //have a straight away at the start
+					if (last.d == 0) last.y -= length;
+					else if (last.d == 1) last.y += last.h;
+					else if (last.d == 2) last.x -= length;
+					else last.x += last.w;
+				} else {
+					dir = Math.floor(seededRandom() * 2);
+					if ([0,1].includes(last.d)) dir += 2;
+					if (last.d == 0) {last.x += (dir==2) ? (last.w-length) : 0; last.y -= tWidth;}
+					else if (last.d == 1) {last.x += (dir==2) ? (last.w-length) : 0; last.y += last.h;}
+					else if (last.d == 2) {last.y += (dir==0) ? (last.h-length) : 0; last.x -= tWidth;}
+					else {last.y += (dir==0) ? (last.h-length) : 0; last.x += last.w;}
+				}
+				trackPieces.push({x: last.x, y: last.y, clr: terrainTypes[0].clr, fric: terrainTypes[0].fric, d: dir});
+				last = trackPieces[trackPieces.length-1];
+				if (dir < 2) {last.w = tWidth; last.h = length;}
+				else {last.w = length; last.h = tWidth;}
+				if (mode == "Maze Runner") {/*do nothing to allow generation off screen*/}
+				else if (last.x < 0 || last.x+last.w > maxX || last.y < 0 || last.y+last.h > maxY) trackPieces.pop();
+				else if (overlap.checked) {
+					for (let p of trackPieces) {
+						if (isCollide(last, p, 0) && p != last && p != trackPieces[0]) {
+							trackPieces.pop();
+							break;
+						}
+					}
+				}
+			}
+		}
+		checkpoints = [], hazards = []; 
+		let depth = 0, tLength = trackPieces.length;
+		for (let t of trackPieces) {
+			depth++;
+			if (t == trackPieces[0]) continue;
+			if (mode == "Standard") 
+				checkpoints.push({x: (t.d < 2) ? t.x : t.x + (t.w/2), y: (t.d < 2) ? t.y + (t.h/2) : t.y,
+					w: (t.d < 2) ? tWidth : 5, h: (t.d < 2) ? 5 : tWidth,
+					clr: `rgb(${depth/tLength*255}, ${depth/tLength*255}, ${depth/tLength*255})`
+			});
+			if (enableHazards.checked && seededRandom() < 0.2) {
+				let terrain = terrainTypes[Math.floor(seededRandom() * terrainTypes.length-1) + 1];
+				hazards.push({x: t.x + seededRandom() * (t.w - 30), y: t.y + seededRandom() * (t.h - 30),
+					w: seededRandom() * t.w, h: seededRandom() * t.h,
+					clr: terrain.clr, fric: terrain.fric});
+			}
+			if (mode == "Standard" && t == trackPieces[tLength - 1]) {
+				// finish line at end of last piece
+				checkpoints.push({x: (t.d != 3) ? t.x : t.x + t.w, y: (t.d != 1) ? t.y : t.y + t.h,
+					w: (t.d < 2) ? tWidth : 5, h: (t.d < 2) ? 5 : tWidth, clr: `fuchsia`});
+			}
+			else if (mode == "Maze Runner" && t == trackPieces[tLength - 1]) {
+				//finish line at random piece
+				let last = trackPieces[Math.round(tLength * seededRandom())];
+				checkpoints.push({x: (last.d < 2) ? last.x : last.x + (last.w/2) ,
+					y: (last.d < 2) ? last.y + (last.h/2) : last.y,
+					w: (last.d < 2) ? tWidth : 5, h: (last.d < 2) ? 5 : tWidth, clr: `fuchsia`});
+			}
+		}
+		if (loop.checked && mode == "Standard") {
+			for (let i = checkpoints.length - 2; i >= 0; i--) {checkpoints.push({...checkpoints[i]});}
+			checkpoints.push({
+				x: trackPieces[0].x, y: trackPieces[0].y,
+				w: trackPieces[0].w, h: trackPieces[0].h, clr: 'red'});
+		}
+		track.innerHTML = '';
+		addtoTrack(trackPieces);
+		addtoTrack(hazards);
+		addtoTrack(checkpoints);
+	}
+
+	function generateRoad() {
+		let seed = seedInput.value || Math.floor(Math.random() * 999999);
+		function seededRandom() {
+			seed = (seed * 9301 + 49297) % 233280;
+			return seed / 233280;
+		}
+		if (raceActive) baseRoadSpeed += 0.01;
+		let roadSpeed = raceActive ? Math.min(baseRoadSpeed, 8) : 0;
+		let activePlayers = players.filter(p => p.on);
+		if (activePlayers.length > 0) {
+			let highestPlayer = activePlayers.reduce((a, b) => a.y < b.y ? a : b);
+			if (highestPlayer.y < track.clientHeight * .5) {
+				roadSpeed = Math.max(roadSpeed, -highestPlayer.vy);
+				highestPlayer.y = track.clientHeight * .5 - .75*roadSpeed;
+			}
+			for (let p of players.filter(p => p.on)) {p.y += roadSpeed;}
+		}
+		for (let t of trackPieces) {t.y += roadSpeed;}
+		trackPieces = trackPieces.filter(t => t.y <= track.clientHeight*1.25);
+		for (let h of hazards) {h.y += roadSpeed;}
+		hazards = hazards.filter(h => h.y <= track.clientHeight*1.25);
+		let last = trackPieces.find(p => p.y == Math.min(...trackPieces.map(p => p.y)));
+		if (trackPieces.length == 0 || last.y > 0) {
+			let trackY = trackPieces.length == 0 ? 0 : last.y;
+			let rowHeight = 80 + Math.floor(seededRandom() * 40);
+			let x = track.clientWidth / 0.35
+			if (trackPieces.length == 0) roadDirection = 0;
+			else {
+				if (roadDirection == 0 && seededRandom() < 0.5) x = last.x;
+				else {
+					if (roadDirection == 0) roadDirection = seededRandom() < 0.5 ? -1 : 1;
+					x = Math.max(0, Math.min(last.x + Math.min(track.clientWidth * 0.05, 35) * roadDirection, track.clientWidth*.7));
+					if (x == 0 || x == track.clientWidth*.7) roadDirection = 0;
+					if (seededRandom() < 0.3) roadDirection = 0;
+				}
+			}
+			
+			trackPieces.push({x: x, y: trackY - rowHeight, w: Math.min(track.clientWidth * 0.3, 275), h: rowHeight,
+				clr: terrainTypes[0].clr, fric: terrainTypes[0].fric});
+			trackPieces.push({x: x + track.clientWidth * 0.3 / 2 - 2.5, y: trackY - rowHeight*.8, 
+				w: 5, h: rowHeight * 0.6, clr: '#ffffff', fric: terrainTypes[0].fric});
+			last = trackPieces.find(p => p.y == Math.min(...trackPieces.map(p => p.y)));
+			if (enableHazards.checked && seededRandom() < 0.5) {
+				let terrain = terrainTypes[Math.floor(seededRandom() * terrainTypes.length)];
+				hazards.push({
+					x: last.x + seededRandom() * (last.w - 30), y: last.y + seededRandom() * (last.h + 30),
+					w: seededRandom() * last.w * .2, h: seededRandom() * last.h * .3 + 5,
+					clr: terrain.clr, fric: terrain.fric});
+			}
+		}
+		
+		for (let el of track.querySelectorAll('.trackPiece')) el.remove();
+		addtoTrack(trackPieces);
+		addtoTrack(hazards);
+	}
+
+	function addtoTrack(e) {
+		if (!e) return;
+		for (let p of e) {
+			let piece = document.createElement('div');
+			piece.className = 'trackPiece';
+			piece.style.left = p.x + 'px'; piece.style.top = p.y + 'px';
+			piece.style.width = p.w + 'px'; piece.style.height = p.h + 'px';
+			piece.style.background = p.clr;
+			if (p == trackPieces[0]) piece.style.zIndex = 1;
+			track.appendChild(piece);
+		}
+	}
+
+	function isCollide(e,f,b) {
+		return e.x < f.x + f.w + b &&  e.x + e.w + b > f.x && e.y < f.y + f.h + b && e.y + e.h + b > f.y;
+	}
+
+	function updatePlayer() {
+		let accel = 0.4, maxSpeed = 10, activePlayers = players.filter(p => p.on).length;
+		for (let p of players) {
+			if (!p.on && (keys[p.up] || keys[p.dn] || keys[p.lt] || keys[p.rt])) {
+				p.on = true; p.num = activePlayers + 1;
+				p.x = trackPieces[0].x; p.y = trackPieces[0].y;
+				p.clr = p.el.style.background = colours[p.num-1];
+				p.el.style.boxShadow = '0 0 15px ' + p.clr;
+				track.appendChild(p.el);
+				activePlayers++;
+			}
+			if (!p.on) continue;
+			if (raceActive) {
+				if (keys[p.up]) p.vy -= accel;
+				if (keys[p.dn]) p.vy += accel;
+				if (keys[p.lt]) p.vx -= accel;
+				if (keys[p.rt]) p.vx += accel;
+			}
+			let friction = 0.96;
+			for (let h of hazards) {if (isCollide(p,h,0)) {friction = h.fric; break;}}
+			p.vx *= friction; p.vy *= friction;
+			p.spd = Math.sqrt(p.vx * p.vx + p.vy * p.vy);
+			if (p.spd > maxSpeed) {p.vx = (p.vx / p.spd) * maxSpeed; p.vy = (p.vy / p.spd) * maxSpeed; p.spd = maxSpeed;}
+			p.x += p.vx; p.y += p.vy;
+			p.sz = Math.max(1, 50 - p.spd * 5);
+			p.w = p.h = p.sz;
+			if (p.x < 0 && gameMode.value != "Maze Runner") p.x = 0;
+			if (p.x + p.sz > track.clientWidth && gameMode.value != "Maze Runner") p.x = track.clientWidth - p.sz;
+			if (p.y < 0 && gameMode.value != "Maze Runner") p.y = 0;
+			if (p.y + p.sz > track.clientHeight && gameMode.value != "Maze Runner") p.y = track.clientHeight - p.sz;
+			for (let t of trackPieces) {
+				if (isCollide(p,t,0)) break;
+				else if (t == trackPieces[trackPieces.length - 1]) {p.vx *= 0.05; p.vy *= 0.05; p.spd *= 0.05;}
+			}
+			p.el.style.left = p.x + 'px';
+			p.el.style.top = p.y + 'px';
+			p.el.style.width = p.el.style.height = p.sz + 'px';
+			if (gameMode.value == "Auto Scroll") {
+				if (p.y + p.sz >= track.clientHeight) {
+					if (!p.finishTime || p.finishTime == -1) {
+						p.finishTime = Date.now() - raceStartTime;
+						let activeNow = players.filter(p => p.on);
+						let finishedPlayers = activeNow.filter(p => p.finishTime && p.finishTime > 0 && p.finishTime != -1);
+						if (finishedPlayers.length < activeNow.length) {
+							p.on = false;
+							p.el.style.opacity = 0.3;
+						} else {
+							raceActive = false;
+							countdown.innerHTML = '';
+							let sorted = finishedPlayers.sort((a, b) => a.finishTime - b.finishTime);
+							for (let pl of sorted) {
+								let timeStr = (pl.finishTime / 1000).toFixed(2) + 's';
+								countdown.innerHTML += `<span style="color:${pl.clr}; text-shadow:0 0 30px ${pl.clr}">
+									P${pl.num}: ${timeStr}</span><br>`;
+							}
+							countdown.style.opacity = 1;
+							countdown.style.fontSize = '3rem';
+						}
+					}
+				}
+			}
+			for (let c of checkpoints) {
+				if (checkpoints.indexOf(c) == p.ch || p.ch == -1) {
+					if (isCollide(p,c,0) && checkpoints.indexOf(c) == p.ch || p.ch == -1) {
+						p.ch++;
+						if (p.ch >= checkpoints.length) {
+							p.finishTime = Date.now() - raceStartTime;
+							let activeNow = players.filter(p => p.on);
+							let finishedPlayers = activeNow.filter(p => p.finishTime && p.finishTime > 0);
+							if (gameMode.value == "Maze Runner" && finishedPlayers.length == 1) {
+								countdown.innerHTML = `<span style="color:${p.clr}; text-shadow:0 0 30px ${p.clr}">
+									P${p.num} WINS!<br>${(p.finishTime / 1000).toFixed(2)}s</span>`;
+								countdown.style.opacity = 1;
+								countdown.style.fontSize = '3rem';
+							} 
+							else if (finishedPlayers.length == activeNow.length) {
+								raceActive = false;
+								countdown.innerHTML = '';
+								let sorted = finishedPlayers.sort((a, b) => a.finishTime - b.finishTime);
+								for (let pl of sorted) {
+									let timeStr = (pl.finishTime / 1000).toFixed(2) + 's';
+									countdown.innerHTML += `<span style="color:${pl.clr}; text-shadow:0 0 30px ${pl.clr}">
+										P${pl.num}: ${timeStr}</span><br>`;
+								}
+								countdown.style.opacity = 1;
+								countdown.style.fontSize = '3rem';
+							}
+						}
+						document.querySelectorAll(`.marker-p${p.num}`).forEach(m => m.remove());
+						for (let i = 0; i < 4; i++) {
+							let nextIdx = p.ch + i;
+							if (nextIdx < checkpoints.length) {
+								let c = checkpoints[nextIdx];
+								let marker = document.createElement('div');
+								marker.className = `marker marker-p${p.num}`;
+								let offset = (p.num - 1) * 2;
+								marker.style.left = (c.x - offset) + 'px';
+								marker.style.top = (c.y - offset) + 'px';
+								marker.style.width = (c.w + offset * 2) + 'px';
+								marker.style.height = (c.h + offset * 2) + 'px';
+								marker.style.borderColor = p.clr;
+								marker.style.borderWidth = '2px';
+								marker.style.opacity = 1 - (i * 0.25);
+								marker.style.zIndex = 10 - p.num;
+								track.appendChild(marker);
+							}
+						}
+					}
+				}
+			}
+		}
+		if (gameMode.value == "Maze Runner") {
+			let activePlayers = players.filter(p => p.on);
+			let cameraX = 0, cameraY = 0, zoom = 1;
+			if (activePlayers.length == 1) {
+				cameraX = activePlayers[0].x + activePlayers[0].sz / 2 - track.clientWidth / 2;
+				cameraY = activePlayers[0].y + activePlayers[0].sz / 2 - track.clientHeight / 2;
+			} 
+			else if (activePlayers.length > 1) {
+				let minX = Math.min(...activePlayers.map(p => p.x));
+				let maxX = Math.max(...activePlayers.map(p => p.x + p.sz));
+				let minY = Math.min(...activePlayers.map(p => p.y));
+				let maxY = Math.max(...activePlayers.map(p => p.y + p.sz));
+				let zoomX = track.clientWidth / ((maxX - minX) * 1.3);
+				let zoomY = track.clientHeight / ((maxY - minY) * 1.3);
+				zoom = Math.min(zoomX, zoomY, 1);
+				cameraX = ((minX + maxX) / 2) - track.clientWidth / 2 / zoom;
+				cameraY = ((minY + maxY) / 2) - track.clientHeight / 2 / zoom;
+			}
+			for (let piece of track.children) {
+				if (piece.className == 'trackPiece' || piece.className.includes('marker')) {
+					let origX = parseFloat(piece.dataset.origX || piece.style.left);
+					let origY = parseFloat(piece.dataset.origY || piece.style.top);
+					if (!piece.dataset.origX) {piece.dataset.origX = origX; piece.dataset.origY = origY;}
+					piece.style.left = ((origX - cameraX) * zoom) + 'px';
+					piece.style.top = ((origY - cameraY) * zoom) + 'px';
+					piece.style.width = (parseFloat(piece.dataset.origW || piece.style.width) * zoom) + 'px';
+					piece.style.height = (parseFloat(piece.dataset.origH || piece.style.height) * zoom) + 'px';
+					if (!piece.dataset.origW) {piece.dataset.origW = piece.style.width; piece.dataset.origH = piece.style.height;}
+				} else if (piece.className == 'player') {
+					let playerObj = players.find(p => p.el == piece && p.on);
+					if (playerObj) {
+						piece.style.left = ((playerObj.x - cameraX) * zoom) + 'px';
+						piece.style.top = ((playerObj.y - cameraY) * zoom) + 'px';
+						piece.style.width = piece.style.height = (playerObj.sz * zoom) + 'px';
+					}
+				}
+			}
+		}
+		else if (gameMode.value == "Auto Scroll") generateRoad();
+		stats.innerHTML = '';
+		for (let p of players.filter(p => p.on).sort((a, b) => a.num - b.num)) {
+			stats.innerHTML += `<span style="color:${p.clr}">P${p.num}: ${Math.round(p.spd * 16)} px/s | 
+				${Math.round(p.sz)}px</span> &nbsp;&nbsp; `;
+		}
+		// if (!raceActive && raceStartTime > 0 && activePlayers > 0) clearInterval(gameInterval);
+	}
+
+	window.onkeydown = function(e) {keys[e.key] = true; if (e.key.startsWith('Arrow')) e.preventDefault();};
+	window.onkeyup = function(e) {keys[e.key] = false;};
+	window.addEventListener("gamepadconnected", () => {
+		controller = setInterval(() => {
+			let gamepads = navigator.getGamepads();
+			for (let gamepad of gamepads) {
+				if (!gamepad) continue;
+				gamepad.buttons.forEach((button, index) => {keys["gp" + index] = button.pressed;});
+				let deadZone = 0.5
+				gamepad.axes.forEach((axis, index) => {
+					if (axis < -deadZone) keys["gpa" + index + "n"] = true;
+					else keys["gpa" + index + "n"] = false;
+					if (axis > deadZone) keys["gpa" + index + "p"] = true;
+					else keys["gpa" + index + "p"] = false;
+				});
+				break;
+			}
+		}, 16)
+	});
+	window.addEventListener("gamepaddisconnected", () => {clearInterval(controller);});
+
+	function startCountdown() {
+		for (let t of countdownTimers) clearTimeout(t);
+		countdownTimers = [];
+		raceActive = false;
+		countdown.style.opacity = 0;
+		countdown.textContent = '3';
+		countdownTimers.push(setTimeout(() => {countdown.style.opacity = 1;}, 50));
+		countdownTimers.push(setTimeout(() => {countdown.style.opacity = 0;}, 700));
+		countdownTimers.push(setTimeout(() => {countdown.textContent = '2'; countdown.style.opacity = 1;}, 1000));
+		countdownTimers.push(setTimeout(() => {countdown.style.opacity = 0;}, 1700));
+		countdownTimers.push(setTimeout(() => {countdown.textContent = '1'; countdown.style.opacity = 1;}, 2000));
+		countdownTimers.push(setTimeout(() => {countdown.style.opacity = 0;}, 2700));
+		countdownTimers.push(setTimeout(() => {countdown.textContent = 'GO!'; countdown.style.opacity = 1;}, 3000));
+		countdownTimers.push(setTimeout(() => {countdown.style.opacity = 0; raceActive = true; raceStartTime = Date.now();}, 3700));
+	}
+
+	function resetGame() {
+		baseRoadSpeed = 1;
+		if (gameMode.value == "Auto Scroll") {
+			trackPieces = [{w:track.clientWidth/2, h:0, x:track.clientWidth/4, y:track.clientHeight, clr:terrainTypes[0], fric:0.96}];
+			hazards = [];  checkpoints = [];
+			generateRoad();
+		} else {
+			trackPieces = []; hazards = []; checkpoints = [];
+			track.innerHTML = '';
+			generateTrack();
+		}
+		countdown.style.fontSize = '10rem';
+		document.querySelectorAll('.marker').forEach(m => m.remove());
+		for (let p of players) {
+			if (gameMode.value == "Auto Scroll") {p.x = track.clientWidth / 2; p.y = track.clientHeight / 2;}
+			else {p.x = trackPieces[0].x + trackPieces[0].w/2; p.y = trackPieces[0].y + trackPieces[0].h/2;}
+			p.sz = 50; p.vx = p.vy = p.spd = p.ch = p.finishTime = -1;
+			p.el = p.el ? p.el : Object.assign(document.createElement('div'), {className: 'player'});
+			p.el.style.opacity = 1;
+			track.appendChild(p.el);
+		}
+		keys = {};
+		if (gameInterval) clearInterval(gameInterval);
+		gameInterval = setInterval(() => {updatePlayer();}, 16);
+		startCountdown();
+	}
+
+	resetGame();
+</script>
+</html>
