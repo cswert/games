@@ -5,55 +5,29 @@
 <title>Games Collection</title>
 <style>
 	body {
-		font-family: system-ui, Roboto, sans-serif;
-		background: linear-gradient(135deg, #1a1a1a, #2d2d2d);
-		color: #e0e0e0;
-		margin: 0;
-		padding: 20px;
-		min-height: 100vh;
-		user-select: none;
+		font-family: system-ui, Roboto, sans-serif; background: linear-gradient(135deg, #1a1a1a, #2d2d2d);
+		color: #e0e0e0; margin: 0; padding: 20px; min-height: 100vh; user-select: none;
 	}
 	h1 {
-		text-align: center;
-		color: #fff;
-		margin-bottom: 40px;
-		font-size: 2.5em;
+		text-align: center; color: #fff; margin-bottom: 40px; font-size: 2.5em;
 		text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
 	}
 	h2 {
-		text-align: center;
-		color: #fff;
-		margin-bottom: 20px;
-		font-size: 2em;
+		text-align: center; color: #fff; margin-bottom: 20px; font-size: 2em;
 		text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
 	}
 	.gamesGrid {
-		display: grid;
-		grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-		gap: 20px;
-		max-width: 1200px;
-		margin: 0 auto;
+		display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+		gap: 20px; max-width: 1200px; margin: 0 auto;
 	}
 	.gameCard {
-		background: #333;
-		border-radius: 15px;
-		padding: 20px;
-		box-shadow: 0 8px 16px rgba(0,0,0,0.3);
-		transition: transform 0.3s, box-shadow 0.3s;
-		text-decoration: none;
-		color: inherit;
-		display: block;
-		position: relative;
-		overflow: hidden;
+		background: #333; border-radius: 15px; padding: 20px;
+		box-shadow: 0 8px 16px rgba(0,0,0,0.3); transition: transform 0.3s, box-shadow 0.3s;
+		text-decoration: none; color: inherit; display: block; position: relative; overflow: hidden;
 	}
 	.gameCard:hover {transform: translateY(-5px); box-shadow: 0 12px 24px rgba(0,0,0,0.4);}
 	.gameCard::before {
-		content: '';
-		position: absolute;
-		top: 0;
-		left: 0;
-		right: 0;
-		height: 4px;
+		content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px;
 		background: var(--gradient, linear-gradient(90deg, #ffeb3b, #ff9800));
 	}
 	.gameTitle {font-size: 1.5em; margin-bottom: 10px; color: #fff;}
@@ -86,6 +60,10 @@
 			<div class="gameTitle">Loud-O-Meter</div>
 			<div class="gameDescription">A game about staying loud. Keep your volume and frequency in target zones to score points.</div>
 		</a>
+		<a href="pixelRacers.html" class="gameCard">
+			<div class="gameTitle">Pixel Racers</div>
+			<div class="gameDescription">Top down 2D racer, the faster you go the smaller you get.</div>
+		</a>
 		<a href="ultimateTicTacToe.html" class="gameCard">
 			<div class="gameTitle">Ultimate Tic-Tac-Toe</div>
 			<div class="gameDescription">Tic-Tac-Toe within Tic-Tac-Toe. Features alternate game modes of Limited and Sudoku.</div>
@@ -96,10 +74,6 @@
 		<a href="chesShogi.html" class="gameCard">
 			<div class="gameTitle">ChesShogi</div>
 			<div class="gameDescription">A combination of chess and shogi. 3 game modes: Normal, Siege, and Limitless. Play on standard or hex board</div>
-		</a>
-		<a href="pixelRacers.html" class="gameCard">
-			<div class="gameTitle">Pixel Racers</div>
-			<div class="gameDescription">Top down 2D racer, the faster you go the smaller you get.</div>
 		</a>
 	</div>
 </body>

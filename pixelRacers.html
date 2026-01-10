@@ -6,10 +6,10 @@
 		Sections of course have different frictions and hazards
 	Vibe coded with Claude
 	Created by cswert
-	Last modified 19 Dec 2025-->
+	Last modified 10 Jan 2026-->
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Pixel Racers</title>
 <style>
 	body {
@@ -25,6 +25,7 @@
 		min-height: 100vh;
 		user-select: none;
 		overflow: hidden;
+		touch-action: manipulation;
 	}
 	h1 {margin:0 0 5px 0; font-size: 2rem; color: #ff3030; text-shadow: 0 0 10px #ff0000;}
 	#track {
@@ -94,25 +95,71 @@
 		background: linear-gradient(90deg, transparent, black, black, black, transparent);
 		padding: 0px 50px 0 50px;
 	}
+	#vgpad {
+		background: rgba(255, 255, 255, 0.1);
+		border: 2px solid rgba(255, 255, 255, 0.3);
+		border-radius: 10px;
+		z-index: 1000;
+		touch-action: none;
+		position:fixed;
+		bottom: 20px; left: 20px; width: 150px; height: 150px;
+	}
+	#vgstick {
+		position: absolute;
+		background: rgba(255, 0, 0, 0.4);
+		border: 2px solid rgba(255, 0, 0, 0.6);
+		border-radius: 50%;
+		touch-action: none;
+		width:50px; height:50px; left:50px; top:50px;
+	}
+	#vgmove {
+		position: absolute;
+		bottom: 5px;
+		left: 5px;
+		width: 30px;
+		height: 30px;
+		background: rgba(0, 255, 0, 0.3);
+		border: 2px solid rgba(0, 255, 0, 0.5);
+		border-radius: 5px;
+		cursor: move;
+		touch-action: none;
+	}
+	#vgresize {
+		position: absolute;
+		bottom: 5px;
+		right: 5px;
+		width: 30px;
+		height: 30px;
+		background: rgba(0, 0, 255, 0.3);
+		border: 2px solid rgba(0, 0, 255, 0.5);
+		border-radius: 5px;
+		cursor: nwse-resize;
+		touch-action: none;
+	}
 </style>
 </head>
 <body>
 	<h1>🏎️ Pixel Racers</h1>
-	<div id="track"></div>
-	<div id="countdown"></div>
-	<div id="controls">
-		<select id="gameMode">
+	<div id=track></div>
+	<div id=countdown></div>
+	<div id=controls>
+		<select id=gameMode>
 			<option>Standard</option>
 			<option>Maze Runner</option>
 			<option>Auto Scroll</option>
 		</select>
-		Seed:<input type="number" id="seedInput">
-		<input type="checkbox" id="overlap">No Overlap
-		<input type="checkbox" id="enableHazards" checked>Hazards
-		<input type="checkbox" id="loop">Loop Back
+		Seed:<input type=number id=seedInput>
+		<input type=checkbox id=overlap>No Overlap
+		<input type=checkbox id=enableHazards checked>Hazards
+		<input type=checkbox id=loop>Loop Back
 		<button onclick="resetGame()">New Track</button>
 	</div>
-	<div id="stats"></div>
+	<div id=stats></div>
+	<div id=vgpad style='display:none;'>
+		<div id=vgstick></div>
+		<div id=vgmove></div>
+		<div id=vgresize></div>
+	</div>
 </body>
 <script>
 	let colours = ['#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff', '#00ffff', '#ffffff', '#000000'],
@@ -427,14 +474,22 @@
 			}
 			for (let piece of track.children) {
 				if (piece.className == 'trackPiece' || piece.className.includes('marker')) {
-					let origX = parseFloat(piece.dataset.origX || piece.style.left);
-					let origY = parseFloat(piece.dataset.origY || piece.style.top);
-					if (!piece.dataset.origX) {piece.dataset.origX = origX; piece.dataset.origY = origY;}
-					piece.style.left = ((origX - cameraX) * zoom) + 'px';
-					piece.style.top = ((origY - cameraY) * zoom) + 'px';
-					piece.style.width = (parseFloat(piece.dataset.origW || piece.style.width) * zoom) + 'px';
-					piece.style.height = (parseFloat(piece.dataset.origH || piece.style.height) * zoom) + 'px';
-					if (!piece.dataset.origW) {piece.dataset.origW = piece.style.width; piece.dataset.origH = piece.style.height;}
+					if (!piece.origX) {
+						piece.origX = parseFloat(piece.style.left);
+						piece.origY = parseFloat(piece.style.top);
+						piece.origW = parseFloat(piece.style.width);
+						piece.origH = parseFloat(piece.style.height);
+					}
+					if (piece.origX + piece.origW < cameraX || piece.origX > cameraX + track.clientWidth / zoom ||
+						piece.origY + piece.origH < cameraY || piece.origY > cameraY + track.clientHeight / zoom) {
+						piece.style.display = 'none';
+					} else {
+						piece.style.display = '';
+						piece.style.left = ((piece.origX - cameraX) * zoom) + 'px';
+						piece.style.top = ((piece.origY - cameraY) * zoom) + 'px';
+						piece.style.width = (piece.origW * zoom) + 'px';
+						piece.style.height = (piece.origH * zoom) + 'px';
+					}
 				} else if (piece.className == 'player') {
 					let playerObj = players.find(p => p.el == piece && p.on);
 					if (playerObj) {
@@ -451,7 +506,6 @@
 			stats.innerHTML += `<span style="color:${p.clr}">P${p.num}: ${Math.round(p.spd * 16)} px/s | 
 				${Math.round(p.sz)}px</span> &nbsp;&nbsp; `;
 		}
-		// if (!raceActive && raceStartTime > 0 && activePlayers > 0) clearInterval(gameInterval);
 	}
 
 	window.onkeydown = function(e) {keys[e.key] = true; if (e.key.startsWith('Arrow')) e.preventDefault();};
@@ -474,6 +528,53 @@
 		}, 16)
 	});
 	window.addEventListener("gamepaddisconnected", () => {clearInterval(controller);});
+
+	if ('ontouchstart' in window || navigator.maxTouchPoints) {
+		vgpad.style.display = '';
+		let mode = 0, ox, oy, sz;
+		
+		vgpad.ontouchstart = e => {
+			e.preventDefault();
+			let t = e.touches[0], r = vgpad.getBoundingClientRect();
+			if (e.target.id == 'vgmove') {mode = 2; ox = t.clientX - r.left; oy = t.clientY - r.top;}
+			else if (e.target.id == 'vgresize') {mode = 3; ox = t.clientX; oy = t.clientY; sz = parseInt(vgpad.style.width) || 150;}
+			else {mode = 1; r = vgstick.getBoundingClientRect(); ox = t.clientX - r.left - 25; oy = t.clientY - r.top - 25;}
+		};
+		
+		vgpad.ontouchmove = e => {
+			if (!mode) return; e.preventDefault();
+			let t = e.touches[0], w = parseInt(vgpad.style.width) || 150;
+			if (mode == 1) {
+				let r = vgpad.getBoundingClientRect();
+				let x = Math.max(0, Math.min(t.clientX - r.left - ox - 25, w - 50));
+				let y = Math.max(0, Math.min(t.clientY - r.top - oy - 25, w - 50));
+				vgstick.style.left = x + 'px'; vgstick.style.top = y + 'px';
+				let cx = (w - 50) / 2, dz = w * 0.15;
+				keys['gpa0n'] = x - cx < -dz; keys['gpa0p'] = x - cx > dz;
+				keys['gpa1n'] = y - cx < -dz; keys['gpa1p'] = y - cx > dz;
+			}
+			else if (mode == 2) {
+				vgpad.style.left = (t.clientX - ox) + 'px'; 
+				vgpad.style.top = (t.clientY - oy) + 'px';
+				vgpad.style.bottom = 'auto';
+			}
+			else if (mode == 3) {
+				let ns = Math.max(80, Math.min(sz + Math.max(t.clientX - ox, t.clientY - oy), 300));
+				vgpad.style.width = vgpad.style.height = ns + 'px'; 
+				vgstick.style.left = vgstick.style.top = (ns - 50) / 2 + 'px';
+			}
+		};
+		
+		vgpad.ontouchend = vgpad.ontouchcancel = () => {
+			if (mode == 1) {
+				let w = parseInt(vgpad.style.width) || 150;
+				let cx = (w - 50) / 2;
+				vgstick.style.left = vgstick.style.top = cx + 'px';
+				keys['gpa0n'] = keys['gpa0p'] = keys['gpa1n'] = keys['gpa1p'] = false;
+			}
+			mode = 0;
+		};
+	}
 
 	function startCountdown() {
 		for (let t of countdownTimers) clearTimeout(t);
