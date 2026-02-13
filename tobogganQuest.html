@@ -1,0 +1,731 @@
+<!DOCTYPE html>
+<title>Toboggan Quest</title>
+<!-- An RPG about tobagganing and freindship
+		Player builds a "party" of four tobagganers at the "lodge"
+		Each tobagganer has stats: Speed, Control, Weight, and Stamina
+		After each race party memebers gain experience and level up
+		The race will consist of "random encounters" of the following:
+			Obstacles (trees, rocks, penguins, polar bears)
+			Turns and straights (still an RPG encounter)
+			QTE (jumps/boosts, members fall off if failed)
+		Player wins if they reach the finish first (opponent moves at a constant slow speed)
+	Vibe coded with Claude Sonnet
+	Created by cswert
+	Last modified 13 Feb 2026-->
+<head>
+<html lang=en>
+<meta charset=UTF-8>
+<meta name=viewport content="width=device-width, initial-scale=1.0">
+<style>
+	* {margin: 0; padding: 0; box-sizing: border-box;}
+	body {background: black; color: white; font-family: monospace; height: 100%; display: flex;
+		flex-direction: column; overflow: hidden; font-size: xx-large;}
+	html {height: 100%; overflow: hidden; user-select: none;}
+	table *{padding: 5px; text-align: center;}
+	#popup {position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 2;
+		border: 10px groove white; display: none; flex-direction: column; justify-content: space-between;
+		align-items: center; padding: 2%; background: black;}
+	#popup::before {content: ''; position: absolute; top: -500%; width: 1000%; height: 1000%; z-index: -1;
+		background: rgba(0, 0, 0, 0.33);}
+	#gameWindow {flex: 1; margin: 2%; position: relative; align-self: anchor-center;}
+	#menu {display: flex; border-top: 10px groove white;}
+	#info {width: 66%; border-right: 10px dashed white; text-align: center;}
+	#action {width:34%; place-items: center; align-content: center;}
+	.confirm {background: white; color: black; padding: 0px 10px 0px 10px;}
+	.confirm:hover {cursor: pointer; background: gray;}
+	.selected::before {content: '▶ ';}
+	#lodge {
+		background-size: contain;
+ 		background-repeat: no-repeat;
+		background-position: center;
+		width: 100%;
+		height: 100%;
+		aspect-ratio: 16/9;
+		display: flex;
+		flex-wrap: wrap;
+		justify-content: space-between;
+		background-image: url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMAAAABsCAMAAAAL3E2gAAAAYFBMVEW5elb////29PHo4tzP09fOxL3PsZ+0srLGpJLGlnyjoJ61lYO7iWzEgVm6gV6OiIS4dU+wbEjIVkeVZkt3ZmDTLzGjRS5zTz1aRz9hNihCLyk5KCMqKSkzIh0fHBsXFRUR1ojrAAAKfElEQVR42u2a2WKbOhBAh30T8qhwDUgG//9fXq0WChDjtnHy0FMHmFhO52gkIChwSNu22I23ZcWdDx20cARfPjC7Xch9auHL8Nmzgd/u9yXkduODfBN2Ea7RA3kcxO8RUAkG2QcCSoG17YHAXbKYRGeJmPg0TVzMs/mwfl8JfG32nc1+y906jB3swI2AaafTn66ayRosXuBL+37Zzd5lZ3qya/cFtKPczE5gUvBZzPZHqCbjkQAFRKB/1vcmgy13gwuGPQGToUp1FlyiCjBM03Ad+CT0sFLvHwvgr/8kv/BPst+kr3v1wcNmPKrA4gSmQQ+gUUzXVtaB+xocCbDrr+tV5k/In2fvuXv08NdJ3u98V8AhOJ8Y08OfjyO2bJKIxzw6HEKIQC59fyEIr+Cz3xJkb9DfFPBZBVS2st+tQd+2eiiZ4ugKHA6gX5USgF+vzIR2uO9nv+77AGWLOwJ6hmqBgc+TFhiGUYxXZEpFZ38ogFdZs/+q9CJJ8/+QviKwHfQH2fsSdO3+aVR38yA7njPsLv04joJPU9cNWkC38GeAACpfLE+yvi+iTNYCTsM3As+yPxZYFPMwjnwcevlv7PtBHXf9OC0aI3AEVnlT5RVcpcHZIrRTIHB/nr3aDu3xdeA28ZFrBcXQcTFKTgkAIlNTgertufz9ELqf6nsjOe4JWG5cCME5H4ZRviR8VpvFYASOoai6H84WwV567+f63sP3KyBRAlzd/3CuLEauIiH39r9wAsdQWwQt8kyhuynC5A+zXzUTO0PRCSxc9jznwygtponzfrxJjZMCvggIV7lD+kRgWazCYfZLmL2NcCPA7xpXBvUyd3Y39WP9jzACZ4pALifG0W1xCp/0vd17bgNs6EbZ8YPcHDLqzdjBcyhcpUJ1mZ6OI2HvMEN8UbbpL2Pf97ClPQucgnYq947J7WcK7eTPQVuDLcvUgUzhHdC6V3NAiajds+vw3QscKix8QJn9m0BSjzp3GD6ZCm3nK7DsjaO3Z+9BQNTjSG2dwlZg+Vxgcdmzz7NHfDm9M1CmzqVXgMOpgLfleAzZGyMxsKdzj1J4DXq23WDmAB4pCD8JwrORe8gwdifOHJgkCC/AyrhCOEdnpzHbVWintcCyufryvmvhBHFE8MT59CGQRCWDc1xRK/xyCoenIXsgk9/cM5wRKJ1ANxxjk0YanxbAK6MU7DRmZncg4I88M5xCJpQ5Ab7MsxCzQvA5QNhyYhW9UAHVkKJR0CYYCHKbuBcIYC08B2kcpxRBM836blronTDIvYqdAMuiKD8roNp5BWAfDFoYxf3uBLYK3TmBKE6rQEB8FJi9AEISe4HTmDmgf8OmEDBIhWAMvSoANEvTjKGGBwIWKzAASlgVJVmD8Dp6DrArQkgLw6zSlx6hwG3s4RTYFGmaGMaZbwRsPF8STRylNVheLwKj4PEKMtl2uK1uPsXQdf3ZOmdZmkSGcVsBdzDXkSHO9Ih7HYp+AIXQvoeWdrIUmnl85bYTSZQU+wIWHXuBJIsyBr8HQzimbXFY7rcXsnenxbhIn1QgEEh/X4DC57RsNFffvyygmC+RIUuihMEX0QID+FsCPKiAF4ijBOGbCQWSNEsTzW4FhBWIE0Wa/jABlsVp2gDRcJf55kLGxUA0kMRxQn+QAWZFkWaVhvDjCoihMsRxkRGEn0NeF2kcaeJQgIs5mAOWpP5hAk0goHACwSTuI0Oc1vnPEqiKYiWgFOZPBbKmrH6SQFnWRfJCBZKiLulPEkBsvIBPWCgBQyiQ1hThJ4FIHkNouR8zPgQQf5RBWZZFkRn6frhY9CpZ/wiG/pJmmqIsf9QkphnQx3HTZpEjvVzq6EFVNf4xUl7+IAGSI1gQLlhmhUMK+IAA8e2qvymAliBAOAtqAccFm1pyqRVSoKgdlL4kwBwYBjtQRxC8IsDQYQQcoQAh+IA8E6BlmSvKkqAONDLYe87nqBDXwXkB8qC6YLkWaFYC0JCKWMonAlhFjpwFwbZpmToaxGoVwFmaFbAWQCRegCBpPASeCBSOBoNgr2ldq0q7pi44L4Ar1gINIl0LBDwXqC/qVRD0wa4AWeUcBPBbICkaQ0EQoLTBZsycqECtXwSDYFdAYwUMfyKQoyEnCJhT1FQvCpSFg6APdgXoWoD+FQFQOAFQ/IEAxSCADT7nOgz+XAD+ikAY7Ao4guB7BbI0s9Aw2CGJLSngOnj7EMLVYRJZYopBABtI5IjD4LEohOxPBPC0AAVLqwQcFQYBfIR1fth3XRh0tvcyiq8IUKKgRqCiOiit1jFYxVZyGMdx6B3DOhi7drNWPHsEF6tAzJNRzJT4aWjZSEqJzspF5LlAlDG3SBLkIWbPVmCYxQFOAJOXBAAdQYBnHvCZlKTAFqsy7AlYU4f215uptYuKBOHLQRLFBFVK4zIfsSdg8nUWQeHG1vTM2wRKlLSD6U2VjOtRt98RGD8ZQgMySR7F9B0CNI4zoJR+Nqp1n4aM+jmI/uIGIezR3GeK5F0CUZzGissibB6CB+s8kgk+wo91lzpSxHECbyFN00hRLyJk9kf8dwSyGt4BNrUX2HAkgHy33awFCvssmeBbBIgVKJbgKhDAEQJaJo6ZMyNQVO8QQJanpseyWRzD2lCg+6yxEciihFL4cqomjor4qUD3UcCsxXGF3T6YdUVjKdB8+aNArHKaWIHUrhDyHfYEjhDcCKhV3bz6agGSsyQyf7GQ2dxPCQyzOIQ3paRJlAB5g0AWpZQSQoCLQ+bhnMCs4ExdiSGOcikAXwzVAsAYQybmQzYCo78VMluf/8wrRR4pAfoWgSTNFNxko9E7H+4JHDGPkSaOyrcIYB7ZtcLxhZuhSfA1bvqvBZI0b3KQfP0ySSDAuTAZma0w4QQh6vse3dDg17SymhAKXw4irYuHwHzyXgL5fNBwFkvvboUQ4Q0gusXOfhHzfE6AiWOcQNHgWwwILevUCRzCMbyO+R7fnEeXi72XK8s3rEtjXjYPgftyyMxCgfshy90IpDWhVf4GAYLUClz4OArB1zeks4s4QkBn6C/dGhkVRZ2liqIBJO8RgKYuc0WW5VBmpaECgKrMchuEIIkNUZxhC5mLkpY0hFAJUACs3iSwWmojkSPB9YM6EmbCylU7pPGq3QVQ4h4MvkGgChY7q8gRQ/BwkR0JpIjUf4gqAZC8TaCsEHcrEJO1QI6htu/zjJEkECAaSuVX+QaBKm8sVdWosb1KhiXRKk/wYBonhjTOWCUDBwA0ZdlYSgpfD1kBSONMUhSZRAok6kAHQV/6VelLmjFaP0g/Lj6+AUQENAcASJLacQHMsotb/yeBAKkdRYawEqDwnYQCDUKS1Y4wM+oFUsDGRwThW8EqCwSK2gEh6wqsBb6/Al6AIKxstn9UQYmiyRGgsQHJv1sgXKmCx1JbhQenX/0BJCUavl0A6JmlNn8B1Lmv3s/hu6G5T1BZHAv4t/TGffrbyf0QMRZ+YHnClWjd2Nfvm8npvsDpdt+M+zMRZnuWoWLbszSjGsyNAKgAqp8gUJFKkeuxnZtgJ7HS0JTmvt8GDcJ3QxoLlQF1Adma7gYI3w46PkT/+Mc/HP8DgbxM64PzJywAAAAASUVORK5CYII=);
+	}
+	#slopes {
+		background-size: contain;
+ 		background-repeat: no-repeat;
+		background-position: center;
+		width: 100%;
+		height: 100%;
+		aspect-ratio: 16/9;
+		display: none;
+		flex-wrap: wrap;
+		justify-content: space-between;
+		background-image: url(data:image/jpeg;base64,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);
+	}
+	@keyframes flash {
+		0%, 100% {filter: brightness(1);}
+		50% {filter: brightness(2.5);}
+	}
+	@keyframes shake {
+		0%, 100% {transform: translateX(0);}
+		25% {transform: translateX(-8px);}
+		75% {transform: translateX(8px);}
+	}
+	.hit {animation: flash 0.3s, shake 0.3s;}
+	#battle {
+		background-size: contain;
+ 		background-repeat: no-repeat;
+		background-position: center;
+		width: 100%;
+		height: 100%;
+		aspect-ratio: 16/9;
+		display: none;
+		grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+		justify-items: center;
+		align-items: center;
+		justify-content: space-between;
+		background-image: url(data:image/jpeg;base64,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)
+	}
+	.ptobag {width: 7%; height: 15%; position: absolute; bottom: 0%; left: 42.5%;
+		background: rgb(81, 58, 22); justify-items: center; block-size: auto;}
+	.ctobag {width: 7%; height: 15%; position: absolute; bottom: 0%; left: 42.5%;
+		background: goldenrod; justify-items: center; block-size: auto;}
+	#race {width: 100%; height: 0px; position: absolute; bottom: 0;background: snow;}
+	.tree {
+		width: 10%;
+		height: 40%;
+		background: transparent;
+		position: absolute;
+		background-size: contain;
+ 		background-repeat: no-repeat;
+		background-position: center;
+		background-image: url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAA8CAMAAAAXHsnOAAAAMFBMVEUMOggVOg0SPg0NNwoFMQMFKQSdro6/yK3r8NV5kG4EVQQONgwEHgJJbkItSChMIwrOawrVAAAAEHRSTlMEMWKcxOH4+vz8/f39/v/++b8f/AAAAr1JREFUeNqtVVt24zoMs8SHRIJk9r/bW8nN7UknTZ05gx/7AzAJUrCOf4Pe3+S7tLcEBGF6q8IStOtFWgcEzpf55PEBuVyiNSoHtzcsHMA7AhIq99R2fWs2R3rxZQ/EZubu/SKd4FZZ7t6u8JmjUOUL/dpMieUUgC9ZpqNPQ6Y7gi4JyLKqVDPpkm1CQLNsDLvEb4hQrUqzCNCvdBbOYVEFOCLityRxAKt7FApmxb+EtUdE2dAEgBxz9tcFWkSkzmmoKtgYerwOBaHGnGPxgagq7u2VogFlY2ZUVnwAgEP6CwH7Oc3d0KlxB73wXGbDEpVVlYgIF35VgcRzTEUtflYAr08sR4TNWbAs2JzmBXeh9hNfIjBGIvdYc8zcZxbyXEEip82yWiYAHTo1HeCnBhYfm2pjZJX7Wt0cU93p2YQkYjlefKsPwKtMzWyMeqbowNpyBQBsQc6pQLknCT+x7DmnYduoBd+KLDz33QI5dNt2YJt2VKZZAe7cn/yOxDQFq4BOLUS4x0IFuD8L/9BayBrTagGZiGCG85+5IJ8DVWU6xwDqhDoxt04uTI9Fmpcm3DPTptUn3L037rvh/liEEAAiXEhHZuUq5l45B9Hz3xdzhCR6U0SYVu3p+PJPPyS76VSQWaAM2Gnw3aQjIPRkrntJyYyKT1SqanouZf9GP3ecqaNTnJB9dK08s9wfGmudRZjE3ebs93uXji7rDdjZk/4QTgnppKma92gQ9aO7OwA6GgvkW3ikTIcmHZ1IbrfbKtzhC/whhQQ9pFMkszKdXY7jdotb2636F/j/ptphY1juLJzzuH3g9Eh3dnOw3B13Ms1cffk+M20J+v3a7sTufdnYW9/dLdDBsS7zb4KN1k7t5/PeIqgdXwJ6dREyHpa5BXy8AgszfX3htnBcxylo1wX0d4L+roCO62D6KWb/AQRhKdcEBq8pAAAAAElFTkSuQmCC)
+	}
+	.rock {
+		width: 20%;
+		height: 10%;
+		background: transparent;
+		position: absolute;
+		background-size: contain;
+ 		background-repeat: no-repeat;
+		background-position: center;
+		background-image: url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAASwAAAB/CAMAAABizg+qAAAACVBMVEWlop1tZVjP09eIdxpMAAAAA3RSTlMN+/yx7dHMAAACiUlEQVR42u3cUXLbMAyE4d29/6H71Emd2jThEAoA7X8Agfkmkm1yRnDOOeecc84559yg9Cq4F1Im25Sy2LaUyTapLLZLNQRMzzt69RlgeteBy0/xyl2oJGmKV/JKJWmMl+JFrz7FK3mxkuZw5a5WkjTFK3m1kqZw6UzrATO8dK7VgAFcOtxqRHMunW89o6+XcloP6cmlrN5O6ealzN6PacSl5LYG9fBSetycVN1LV0TuzirMpYsiCahWRakkklTBClJJRa122XRp5a2WYrq2HlaStKbyPfit38Miqz7by/2SZUcr6T8sWy2yVe0f/n2tvmH5H2sdsOnFRTexEh7ix701GmAVxop78avmVkGsuBdprE0ujrIKYIXByGFWAaxw47Cwm60kItK9sUgi2k2xSJLEB90Ci8/Ch43G4qvweVOxGMBKEgOaYJFrrXQxAF2wuAynejOgyX2YgLXqxaV7PLWYiBU3DK5SF8caWs8Ayn2IsghWi+/+I7Au8uIUrAu8uFEbLJLGChb8a4NWw7BeCHBVzGrEQ2sBwPeFrKZh/UNw8g5eB7TWCvYTq9thPfPifgBupkXyE6m/VvfTIklWhWquhYesFaGyVkjKXCEqc4WkzBWCMlcM6s5e6Bcfs9OO2A2U9FBdMfxySe/lGOWkdThTeyhthbNNppKEjDpJQfshpzZUUCBk1YMKioS8xlkJmRWXAhQLuZWmgoIhu7JSQM0X9ZakQtm3GgNAwMlY+xkrUFGs3htrxrouxWq+ZfvTjBWJtNV2/Epv6n5wcgRr06v9KdNRrTVY/yO5g1hrsAHHl3laj2IjznrP1GND95Nuu6NbJ1vFstWgDfB62SqWqYKZKp6VnHN5/QFIMnIV+6qXAAAAAABJRU5ErkJggg==);
+	}
+	.penguin {
+		width: 20%;
+		height: 10%;
+		background: transparent;
+		position: absolute;
+		background-size: contain;
+ 		background-repeat: no-repeat;
+		background-position: center;
+		background-image: url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGAAAAB0CAMAAABNAceHAAAAD1BMVEUAAAAAAAAWEQn7+/v3tAydH/PiAAAAA3RSTlMGgfqBCwpkAAACnElEQVR42tXaC26EMAwEUGbi+5+50m7AaZK1E2z6Gak/CebVhpVWtMdOAPAd4EgP2AXZ9WPy+x8bguSjAj8naT8PC7SC9AHyR6AdJA+QPwJ/HcAfB0A3/w4AjgPJAJpGDDDCwOubvi0RqAX9PvIA/a6WAekA0AD1C7IAvCrfxTyL8wFcQC3NA9gCeAwgzrp8oHbJO9fdmvo6IEVeH/UTUgECFJHXCKyfASYCpPQhUwGZJBOY1YvkATIKbAHGAY79aQBJ6QSSiReBVejrhYkAr15qfZvwy0CvaVcfH4FnRMMxcUCJ3Hd3YJumvpSSMgLnKUWBkABtbOvfkYQlsUbqb6z1OSPwTJmGUQEKhAS/X9YAbAL0BigSEugDhV3uLYjiA/sCjAEMAcsAtwCokNmvAlTYWBCWgX2hPUdMQAYBK/3uABrW6FZXF7QJ4BIQGMAUeCZlAA3HrAxwaP++gMgA8RHYRoof2QPANqWk74gZAAMDREfgwwDGSxy4zNENadYBZgHIBcQAIhvS/DzA1A0VeRgQPgzwHiCB/iUg1I88gFvAvsAdAPyeAGAMsCdwB5g9irgLwHh41gt+v3CSef8I0Afa4/VnGP2d4ANCzVXQtgPU/lHwAZk8k0F/d8ongA6gZ3wvGJ7t7gsynjoCdTsmIMYALmAcodkHhEQSIGKOAOsIzS0ANiAhQIUEwF4SDcEBxAWogC3YN5G1pDggRhRwhHIboAOI8UoWBgB/Bp4R5xrABWpm9f569YXmC6T+7AOkc5dqaMY6CUcCYNb7gC8Y9QHA7Uf/djERIMlPb0gzgPk7ojYGgDO8YvZrAOCjUatnJ5E01j+FRsJ5MDD2e7kMXY95rNFvExrn0PHu97P+LwGBP1DUbIyL45nAbP8CpDBEuFNtOs4AAAAASUVORK5CYII=);
+	}
+	#party {display: flex; align-items: end; justify-content: space-around; position: relative;
+		top: 25%; width: 50%; height: 3%; background: rgb(81, 58, 22);}
+	.qt{width: 6%; height: 10%; background: magenta; position: absolute; justify-self: center;
+ 		align-self: anchor-center; border-radius: 50%; text-align: center;}
+	.qtRing{width: 30%; height: 50%; border: 5px solid yellow; border-radius: 50%;
+		position: absolute; justify-self: center; align-self: anchor-center; box-sizing: border-box;}
+	.storyPtobag{transform: rotate(60deg); block-size:none; left: 0%; bottom: -2%; height: 25%;
+		animation: move 10s forwards;}
+	@keyframes move {
+		0% {transform: rotate(60deg); bottom:-2%; left:0%;}
+		90% {transform: rotate(60deg); bottom: 25%; left: 45%;}
+		100% {transform: rotate(0deg); bottom: 25%; left: 45%;}
+	}
+	.storyCtobag{bottom: 53%; left: 60%; transform: rotate(270deg); transform-origin: bottom center;}
+	#talker1 , #talker2 {position: absolute; bottom: 1%; width: 50%; height: 35%;
+		z-index: 10; place-content: center; text-align: center; font-size: 390%;}
+	.talking{animation: talk 1s infinite; filter:brightness(1);}
+	@keyframes talk {
+		0% {transform: translateY(0%) scale(1);}
+		50% {transform: translateY(2%) scale(1.2);}
+		100% {transform: translateY(0%) scale(1);}
+	}
+	.silent{animation: none; filter:brightness(0.5);}
+	#touch {display: none; width: 100%; height: 25%; padding: 2%; gap: 30%; z-index: 3; margin-bottom: 10%;}
+	.touchBtn {background: rgba(255,255,255,0.5); border: 2px solid white; border-radius: 
+		10px; font-size: 2rem; justify-self: center; padding: 0% 10% 0% 10%; align-content: center;}
+	#touch > div:first-child {display: grid; width: 40%;}
+	@media (max-width: 768px) {
+		body {font-size: small;}
+		#touch {display: inline-flex;}
+		#gameWindow {width: 100%;}
+		#lodge, #slopes, #battle {height: auto;}
+	}
+</style>
+</head>
+<body>
+	<div id=gameWindow>
+		<div id=popup></div>
+		<div id=talkers style='display:none'>
+			<div id=talker1></div>
+			<div id=talker2 style='left:50%'></div>
+		</div>
+		<div id=lodge>
+			<div id=sofa style='width: 30%; height: 35%; position: relative;'></div>
+			<div id=fireplace style='width: 30%; height: 20%; position: relative;'></div>
+			<div id=bar style='width: 30%; height: 35%; position: relative;'></div>
+			<div id=table1 style='width: 30%; height: 35%; margin: -10% 35% 0 35%; position: relative;'></div>
+			<div id=table2 style='width: 30%; height: 50%; margin-top: -10%; position: relative;'></div>
+			<div id=table3 style='width: 30%; height: 50%; margin-top: -10%; position: relative;'></div>
+		</div>
+		<div id=slopes>
+			<div id=race></div>
+			<div id=ctobag class=ctobag>
+				<div>🤹🏼‍♂️</div>
+				<div>👨🏾‍🍳</div>
+				<div>👨‍🚒</div>
+				<div>🧙🏿</div>
+			</div>
+			<div id=ptobag class=ptobag></div>
+		</div>
+		<div id=battle>
+			<div id=party></div>
+			<div id=enemy></div>
+		</div>
+	</div>
+	<div id=menu>
+		<div id=info></div>
+		<div id=action></div>
+	</div>
+	<div id=touch>
+		<div>
+			<div class=touchBtn id=tup style='grid-column: 2; grid-row: 1;'>▲</div>
+			<div class=touchBtn id=tlf style='grid-column: 1; grid-row: 2;'>◄</div>
+			<div class=touchBtn id=trt style='grid-column: 3; grid-row: 2;'>►</div>
+			<div class=touchBtn id=tdn style='grid-column: 2; grid-row: 3;'>▼</div>
+		</div>
+		<div class=touchBtn id=ten>●</div>
+	</div>
+</body>
+<script>
+	let gameInfo = localStorage.gameInfo ? JSON.parse(localStorage.gameInfo) : 
+		{party: [{lvl:1, stm:10, mxs:10, wt:Math.round(Math.random()*10), face:'😊'},
+		{nm: "Terry", lvl:1, stm:10, mxs:10, wt:3, face:"😀"}, {nm: "Berri", lvl:1, stm:10, mxs:10, wt:3,  face:"😃"}],
+		history: {items:0, raceW:0, raceL:0, treeW:0, treeL:0, rockW:0, rockL:0, penguinW:0, penguinL:0, quickTimeW:0, quickTimeL:0}, 
+	 	chars: [{nm:'Alex'}, {nm:'Blake'}, {nm:'Casey'}, {nm:'Drew'}, {nm:'Elliot'}, {nm:'Finley'},
+		{nm:'Gray'}, {nm:'Harper'}, {nm:'Ivy'}, {nm:'Jimmers'}, {nm:'Kendall'}, {nm:'Logan'}, {nm:'Matt'},
+		{nm:'Nico'}, {nm:'Oakley'}, {nm:'Peyton'}, {nm:'Quinn'}, {nm:'Riley'}, {nm:'Skyler'}, 
+		{nm:'Taylor'}, {nm:'Uta'}, {nm:'Val'}, {nm:'Winter'}, {nm:'Yuliana'}, {nm:'X'}, {nm:'Zion'}
+	]};
+	let track = [], ptob = {}, ctob = {}; keys = {}, eHP = 0;
+	window.onkeydown = function(e) {
+		keys[e.key] = true;
+		if (e.key == 'e' || e.key == 'Enter') {
+			if (popup.style.display != 'none' && document.activeElement.tagName != 'INPUT') popup.querySelector('.confirm').click();
+			else {
+				let selected = document.querySelector('.selected');
+				if (selected && menu.style.display != 'none') selected.click();
+				hoverAction(Array.from(action.children).indexOf(document.querySelector('.selected')));
+			}
+		}
+		if (e.key == 'w' || e.key == 's' || e.key == 'ArrowUp' || e.key == 'ArrowDown') {
+			let dir = (e.key == 'w' || e.key == 'ArrowUp') ? 'previousElementSibling' : 'nextElementSibling';
+			if (popup.style.display != 'none') {
+				let current = popup.querySelector('.confirm');
+				let next = current?.[dir];
+				if (next) {
+					current.classList.remove('confirm');
+					next.classList.add('confirm');
+				}
+			} 
+			else if (menu.style.display != 'none'){
+				let selected = document.querySelector('.selected');
+				let next = selected?.[dir];
+				if (next) {
+					selected.classList.remove('selected');
+					next.classList.add('selected');
+					infoUpdate(next.innerHTML);
+				}
+			}
+		}
+		if (e.key == 'p') debugger;
+	};
+	window.onkeyup = function(e) {keys[e.key] = false;};
+	window.ontouchstart = function(e) {
+		[['ten', 'e'], ['tup', 'w'], ['tdn', 's'], ['tlf', 'a'], ['trt', 'd']].forEach(([id, key]) => {
+			if (e.target.id == id) {
+				e.target.classList.add('active');
+				window.onkeydown({key: key});
+			}
+		});
+	};
+	window.ontouchend = function(e) {
+		[['ten', 'e'], ['tup', 'w'], ['tdn', 's'], ['tlf', 'a'], ['trt', 'd']].forEach(([id, key]) => {
+			keys[key] = false;
+			e.target.classList.remove('active');
+		});
+	};
+	if (!gameInfo.party[0].nm) {
+		popup.style.display = 'inline-flex';
+		popup.innerHTML = `Welcome to Toboggan Quest!<br>Please enter your name:
+			<br><input id=nmInput type=text>
+			<br><div onclick="gameInfo.party[0].nm=nmInput.value; story(0);" class=confirm>Start Game</div>`;
+			nmInput.focus();
+		for (let c of gameInfo.chars) {
+			if (c.nm == "X") {c.lvl = c.stm = c.mxs = c.wt = 99; c.prob = .01; c.face = '🦹🏻‍♂️'; continue;}
+			c.face = String.fromCodePoint(0x1F600 + Math.floor(Math.random() * 80));
+			c.lvl = 1; c.stm = c.mxs = Math.round(Math.random()*10)+1;
+			c.wt = Math.round(Math.random()*10+1); c.prob = Math.random();
+			c.cond = Math.round(Math.random()*10) + ' ' + Object.keys(gameInfo.history)[Math.ceil(Math.random()*9)];
+			if (Math.random() < 0.25) c.cond = 'none';
+		}
+
+	} else loadLodge();
+	function loadLodge() {
+		battle.style.display = slopes.style.display = popup.style.display='none';
+		menu.style.display = lodge.style.display = 'flex';
+		info.innerHTML = 'Start a new EPIC race';
+		sofa.innerHTML = fireplace.innerHTML = bar.innerHTML = table1.innerHTML = table2.innerHTML = table3.innerHTML = '';
+		addActions(['Start Race', 'Check Party', 'Look Around', 'Save Game', 'Delete Game']);
+		for (let c of gameInfo.chars) {
+			if (c.stm < c.mxs) c.stm += 1;
+			if (!gameInfo.party.find(p => p.nm == c.nm) && Math.random() < c.prob) {
+				document.getElementById(['sofa', 'fireplace', 'bar', 'table1', 'table2', 'table3']
+					[Math.floor(Math.random()*6)]).innerHTML += `<div id=${c.nm} style="position: absolute; 
+					left: ${Math.random()*90}%; top: ${Math.random()*90}%">${c.face}</div>`;
+			}
+		}
+		for (let p of gameInfo.party) {p.stm = p.mxs;}
+		if (gameInfo.history.raceW == 1) story(13);
+		else if (gameInfo.history.raceW == 2) story(20);
+		else if (gameInfo.history.raceW == 10) story(22);
+		else if (gameInfo.history.raceW == 10) story(34);
+	}
+	function startRace() {
+		if (gameInfo.party.length < 3) {
+			popup.style.display = 'inline-flex';
+			popup.innerHTML = `You need at least 3 tobagganers to start a race!
+				<br><div onclick="popup.style.display='none'" class=confirm>OK</div>`;
+			return;
+		}
+		lodge.style.display = battle.style.display = menu.style.display = popup.style.display = 'none';
+		slopes.style.display = 'block';
+		for (let i = 0; i < (Math.random()*100*gameInfo.party.length)+100; i++) {
+			track.push({obstacle:[], length:Math.random()*50+200, turn:Math.random()< .5 ? Math.random()*120-30 : 0});
+			for (let j = 0; j < Math.random()*2; j++) {
+				if (Math.random() < 0.8 || i < 10) continue;
+				track[i].obstacle.push({type:['tree','tree','tree','rock','penguin'][Math.floor(Math.random()*5)], 
+					pos:Math.random()*track[i].length, size:Math.random()+.1});
+			}
+		}
+		race.style.borderTop = '';
+		ptob.left = 42.5;
+		ptob.pos = 0;
+		ctob = {spd: Math.random()*500*((gameInfo.history.raceW+1)/10), pos:50};
+		ctobag.style.left = '42.5%';
+		updateRace();
+	}
+	function updateRace() {
+		lodge.style.display = battle.style.display = menu.style.display = popup.style.display = 'none';
+		slopes.style.display = 'block';
+		ptobag.innerHTML = '';
+		ptob.bat = false;
+		for (let p of gameInfo.party) {ptobag.innerHTML += `<div>${p.face}</div>`;}
+		let twt = gameInfo.party.reduce((a,b) => a + b.wt, 0);
+		let tstm = gameInfo.party.reduce((a,b) => a + b.stm, 0);
+		let tmxs = gameInfo.party.reduce((a,b) => a + b.mxs, 0);
+		ptob.spd = 9.8*twt*(tstm/tmxs);
+		ptob.pos += ptob.spd;
+		ctob.pos += ctob.spd;
+		ctobag.style.bottom = (ctob.pos - ptob.pos) + '%';
+		let ht = race.clientHeight/slopes.clientHeight*100;
+		let bottom = parseFloat(ctobag.style.bottom);
+		ctobag.style.transform = `scale(${Math.max(0.1, 1 - (bottom/ht) * 0.7)})`;
+		ctobag.style.transformOrigin = 'bottom center';
+		if (bottom > ht) ctobag.style.bottom = ht - 5 + '%';
+		ctobag.style.left = (parseFloat(ctobag.style.left) + Math.random()*4-2) + '%';
+		if (keys['a'] || keys['ArrowLeft']) ptob.left -= (ptob.left-5 > 0) ? 5 : 0;
+		else if (keys['d'] || keys['ArrowRight']) ptob.left += (ptob.left+5 < 85) ? 5 : 0;
+		ptobag.style.left = ptob.left + '%';
+		race.innerHTML = '';
+		race.style.height = '0px';
+		for (let i = 0; i < 5; i++) {
+			if (i >= track.length) {race.style.borderTop = 'solid 5px yellow'; break;}
+			race.style.height = parseInt(race.style.height) + track[i].length/3 + 'px';
+			if (i == 0 && track.slice(i, i + 5).some(t => t.turn != 0)) {
+				let turnAngle = track.slice(i, i + 5).find(t => t.turn != 0).turn;
+				race.style.transform = `skewX(${turnAngle*.1}deg)`;
+				race.style.transformOrigin = 'bottom center';
+			}
+			for (let o of track[i].obstacle) {
+				let obs = document.createElement('div');
+				obs.classList.add(o.type);
+				obs.style.bottom = (parseInt(race.style.height) - o.pos/3) + 'px';
+				obs.style.left = (o.pos % 80 + 10) + '%';
+				obs.style.transform = `scale(${3/(i+1)+o.size})`;
+				obs.style.transformOrigin = 'bottom center';
+				race.appendChild(obs);
+				if (i == 0 && Math.abs(ptob.left - parseFloat(obs.style.left)) < 10) {
+					ptob.bat = true;
+					encounter(o.type);
+				}
+			}
+		}
+		track.shift();
+		if (track.length <= 1) {
+			popup.style.display = 'inline-flex';
+			let temp = ctobag.style.bottom > ptobag.clientHeight/window.innerHeight*100;
+			popup.innerHTML = (temp ? `You Are Lose!` : `You won.`) + `<br><div onclick="loadLodge()" class=confirm>OK</div>`;
+			if (temp) gameInfo.history.raceL++;
+			else gameInfo.history.raceW++;
+			for (let p of gameInfo.party) {
+				let gain = Math.round(Math.random()*5)
+				p.mxs += gain; p.stm = gain; p.lvl++;
+			}
+		}
+		else if (!ptob.bat) setTimeout(() => updateRace(), Math.min(250,30000/Math.round(ptob.spd)));
+	}
+	function encounter(e) {
+		if (Math.random() < .75) {quickTime(); return;}
+		menu.style.display = 'flex';
+		battle.style.display = 'grid';
+		slopes.style.display = 'none';
+		addActions(['Attack', 'Defend', 'Use Item', 'Sled!']);
+		enemy.className = e;
+		enemy.style.width = '70%';
+		enemy.style.position = 'relative';
+		enemy.style.height = (e == 'rock') ?  '25%' : '70%';
+		eHP = Math.random()*gameInfo.party.reduce((a,b) => a + b.lvl, 0);
+		party.innerHTML = ptobag.innerHTML;
+	}
+	function quickTime() {
+		let tar = ['w', 'a', 's', 'd', 'e'][Math.floor(Math.random()*5)];
+		let qt = document.createElement('div');
+		qt.classList.add('qt');
+		qt.innerHTML = tar;
+		let qtR = document.createElement('div');
+		qtR.id = 'qtR';
+		qtR.classList.add('qtRing');
+		slopes.appendChild(qtR);
+		slopes.appendChild(qt);
+		qtR.style.width = Math.ceil(qtR.clientWidth/slopes.clientWidth*100) + '%';
+		qtR.style.height = Math.ceil(qtR.clientHeight/slopes.clientHeight*100) + '%';
+		let interval = setInterval(() => {
+			qtR.style.width = (parseFloat(qtR.style.width) - Math.min(ptob.spd/15,1.5)) + '%';
+			qtR.style.height = (parseFloat(qtR.style.height) - Math.min(ptob.spd/25,2.5)) + '%';
+			let tt = parseInt(qtR.style.width);
+			if (ptob.bat == false) {
+				slopes.removeChild(qt);
+				slopes.removeChild(qtR);
+				clearInterval(interval);
+				updateRace();
+			} else if (popup.style.display != 'none') {/*do nothing*/}
+			else if (keys[tar] && tt >= 5 && tt <= 15) {ptob.bat = false; gameInfo.history.quickTimeW++;}
+			else if (tt <= 0 || (Object.values(keys).includes(true) && tt < 25) && ptob.bat === true) {
+				ctob.pos += 10;
+				gameInfo.history.quickTimeL++;
+				if (Math.random() < .5 && gameInfo.party.length > 1) {
+					popup.style.display = 'inline-flex';
+					popup.innerHTML = `${gameInfo.party[gameInfo.party.length-1].nm} fell off!
+						<br><div onclick="popup.style.display='none'; ptob.bat = false;" class=confirm>OK</div>`;
+					gameInfo.party.pop();
+				} else ptob.bat = false;
+			}
+		}, 100);
+	}
+	function eAttack() {
+		popup.style.display = 'inline-flex';
+		if (Math.random() < 0.75) popup.innerHTML = `The enemy is a ${enemy.className} and doesn't do anything.`;
+		else if (Math.random() < .05) {
+			let lost = gameInfo.party[Math.floor(Math.random()*gameInfo.party.length)];
+			if (lost > 0) gameInfo.party = gameInfo.party.filter(p => p.nm != lost.nm);
+			else gameInfo.party[0].stm = 0;
+			popup.innerHTML = `ENEMY SNIPER took out ${lost.nm} and they fell off the tobaggan!`;
+		} 
+		else {
+			let type = (enemy.className == 'rock') ? 'A sharp rock' : 'A swarm of bees';
+			let target = gameInfo.party[Math.floor(Math.random()*gameInfo.party.length)];
+			target.stm -= Math.round(Math.random()*3)+1 / (ptob.def ? 2 : 1);
+			if (target.stm <= 0 && target.nm != gameInfo.party[0].nm) {
+				gameInfo.party = gameInfo.party.filter(p => p.nm != target.nm);
+				popup.innerHTML = `${type} attacked ${target.nm} and they fell off the tobaggan!`;
+			}
+			else popup.innerHTML = `${type} attacked ${target.nm}`;
+		}
+		if (gameInfo.party[0].stm <= 0) {
+			popup.innerHTML += `<br>You pass out. The race is over.
+				<br><div onclick="loadLodge()" class=confirm>OK</div>`;
+			gameInfo.history[`${enemy.className.split(' ')[0]}L`]++;
+			gameInfo.history[`raceL`]++;
+			gameInfo.party[0].stm = gameInfo.party[0].mxs;
+		}
+		else popup.innerHTML += `<br><div onclick="popup.style.display='none'" class=confirm>OK</div>`;
+		addActions(['Attack', 'Defend', 'Use Item', 'Sled!']);
+	}
+	function addActions(e) {
+		action.innerHTML = '';
+		for (let i in e) {action.innerHTML += `<div onmouseover="hoverAction(${i})" onclick="selectAction('${e[i]}')">${e[i]}</div>`;}
+		action.children[0].classList.add('selected');
+	}
+	function hoverAction(i) {
+		for (let c of action.children) {c.classList.remove('selected');}
+		action.children[i].classList.add('selected');
+		infoUpdate(action.children[i].innerHTML);
+	}
+	function reduceParty() {
+		addActions(['Start Race', 'Check Party', 'Look Around', 'Save Game', 'Delete Game']);
+		if (gameInfo.party.length > 5) {
+			popup.style.display = 'inline-flex';
+			popup.innerHTML = `Your party is too large! Please remove a memeber.
+				<br><div onclick="popup.style.display='none'" class=confirm>OK</div>`
+			let rem = [];
+			for (let p of gameInfo.party) {rem.push(`Remove ${p.nm}`);}
+			rem.shift();
+			addActions(rem);
+		}
+	}
+	function saveGame() {localStorage.gameInfo = JSON.stringify(gameInfo);}
+	function infoUpdate(a) {
+		if (a == 'Start Race') info.innerHTML = 'Start a new EPIC race';
+		else if (a == 'Check Party') info.innerHTML = 'View your current tobagganing party';
+		else if (a == 'Look Around') info.innerHTML = 'Explore the lodge and meet new tobagganers';
+		else if (a == 'Save Game') info.innerHTML = 'Save your current progress';
+		else if (a == 'Delete Game') info.innerHTML = 'Delete your current save file (cannot be undone)';
+		else if (a == 'Sofa') info.innerHTML = 'A comfy looking sofa. Perfect for relaxing after a long day of tobagganing.';
+		else if (a == 'Fireplace') info.innerHTML = 'A warm fireplace crackling with a cozy fire. It radiates warmth throughout the lodge.';
+		else if (a == 'Bar') info.innerHTML = 'A rustic bar stocked with hot cocoa and snacks. A great place to refuel before your next race.';
+		else if (a.includes('Table')) info.innerHTML = 'A wooden table with chairs around it. You might find some interesting people to talk to here.';
+		else if (parseInt(a) > 0) {
+			let p = gameInfo.chars.find(x => x.nm == a.match(/\((.+)\)/)[1]);
+			info.innerHTML = `Talk to ${p.nm} and see if they want to join your party
+				<br>Level: ${p.lvl}   Stamina: ${p.stm}   Weight: ${p.wt}`;}
+		else if (a.includes('Remove')) info.innerHTML = `Remove ${a.split(' ')[1].replace(')', '')} from your party.`;
+		else if (a == 'Attack') info.innerHTML = 'Attempt to damage your opponent.';
+		else if (a.includes('Attack ')) {
+			let p = gameInfo.party.find(x => x.nm == a.split(' ')[1]);
+			info.innerHTML = `Attack with ${p.nm}. They have ${p.stm} stamina left.`;
+		}
+		else if (a == 'Defend') info.innerHTML = 'Brace yourself against an incoming attack.';
+		else if (a == 'Use Item') info.innerHTML = 'Use an item from your inventory.';
+		else if (a == 'Sled!') info.innerHTML = 'Try to escape the battle by sledding away!';
+		else if (a == 'Back') info.innerHTML = 'Go back to main selection';
+		else info.innerHTML = 'Something broke... PANIC! or select another action';
+	}
+	function selectAction(a) {
+		if (a == 'Start Race') startRace();
+		else if (a == 'Check Party') {
+			popup.style.display = 'inline-flex';
+			popup.innerHTML = `<table id=ttt><tr><th>Name</th><th>Level</th><th>Stamina</th><th>Weight</th></tr></table>
+				<br><div onclick="popup.style.display='none'" class=confirm>OK</div>`;
+			for (let p of gameInfo.party) {
+				let row = document.createElement('tr');
+				row.innerHTML = `<td>${p.nm}</td><td>${p.lvl}</td><td>${p.stm}</td><td>${p.wt}</td>`;
+				ttt.appendChild(row);
+			}
+		}
+		else if (a == 'Look Around') addActions(['Sofa', 'Fireplace', 'Bar', 'Table 1', 'Table 2', 'Table 3', 'Back']);
+		else if (a == 'Sofa' || a == 'Fireplace' || a == 'Bar' || a.includes('Table')) {
+			let b = document.getElementById(a.toLowerCase().replace(' ', '')).children;
+			if (b.length == 0) {
+				popup.style.display = 'inline-flex';
+				popup.innerHTML = `There's no one here right now.
+					<br><div onclick="popup.style.display='none'" class=confirm>OK</div>`;
+				return;
+			}
+			let peeps = [];
+			for (let c of b) {
+				peeps.push(`${peeps.length + 1} ${c.innerHTML} (${c.id})`);
+			}
+			addActions(peeps.concat(['Back']));
+		}
+		else if (parseInt(a) > 0) {
+			let c = gameInfo.chars.find(x => x.nm == a.match(/\((.+)\)/)[1]);
+			if (c.nm == 'X') {
+				popup.style.display = 'inline-flex';
+				popup.innerHTML = `Ha! you've me... Very well. I shall join your party and victory shall be mine!
+					<br><div onclick="popup.style.display='none'" class=confirm>OK</div>`;
+				talker1.innerHTML = 'X';
+				talker2.innerHTML = '😊';
+				talkers.style.display = 'grid';
+				talking(1);
+			}
+			else {
+				if (c.cond != 'none' || parseInt(c.cond) > gameInfo.history[c.cond.split(' ')[1]]) {
+					popup.style.display = 'inline-flex';
+					popup.innerHTML = `Come back after you've ${c.cond.includes('W') ? 'won/beat' : 'lost/failed'}
+						${c.cond.split(' ')[1].slice(0, -1)} ${parseInt(c.cond)} times!
+						<br><div onclick="popup.style.display='none'" class=confirm>OK</div>`;
+				} else {
+					gameInfo.party.push(c);
+					document.getElementById(c.nm).remove();
+					addActions(['Start Race', 'Check Party', 'Look Around', 'Save Game', 'Delete Game']);
+					popup.style.display = 'inline-flex';
+					popup.innerHTML = `${c.nm} has joined your party!
+						<br><div onclick="popup.style.display='none'; reduceParty();" class=confirm>OK</div>`;
+				}
+			}
+		}
+		else if (a.includes('Remove')) {
+			let nm = a.split(' ')[1];
+			if (nm != 'Terry' && nm != 'Berri') {
+				let pMember = gameInfo.party.find(x => x.nm == nm);
+				let cIdx = gameInfo.chars.findIndex(x => x.nm == nm);
+				Object.assign(gameInfo.chars[cIdx], pMember);
+			}
+			gameInfo.party = gameInfo.party.filter(p => p.nm != nm);
+			addActions(['Sofa', 'Fireplace', 'Bar', 'Table 1', 'Table 2', 'Table 3', 'Back']);
+			popup.style.display = 'inline-flex';
+			popup.innerHTML = `${nm} has been removed from your party.
+				<br><div onclick="popup.style.display='none'; reduceParty();" class=confirm>OK</div>`;
+		}
+		else if (a == 'Attack') {
+			let party = [];
+			for (let p of gameInfo.party) {party.push(`Attack ${p.nm}`);}
+			addActions(party)
+		}
+		else if (a.includes('Attack ')) {
+			let p = gameInfo.party.find(x => x.nm == a.split(' ')[1]);
+			popup.style.display = 'inline-flex';
+			if (p.stm > 1 &&  Math.random() < .8) {
+				eHP -= p.lvl * (p.stm/p.mxs);
+				enemy.classList.add('hit');
+				popup.innerHTML = `You hit the enemy for some damage!<br><div onclick="eAttack();" class=confirm>OK</div>`;
+				setTimeout(() => {
+					enemy.classList.remove('hit');
+					if (eHP <= 0) {
+						gameInfo.history[`${enemy.className.split(' ')[0]}W`]++;
+						ptob.bat = false;
+						popup.innerHTML = `You defeated the enemy!<br><div onclick="updateRace();" class=confirm>OK</div>`;
+					}
+				}, 300);
+			} else popup.innerHTML = `Your attack missed!<br><div onclick="eAttack();" class=confirm>OK</div>`;
+			addActions(['Attack', 'Defend', 'Use Item', 'Sled!']);
+		}
+		else if (a == 'Defend') {
+			ptob.def = true;
+			popup.style.display = 'inline-flex';
+			popup.innerHTML = `Your party braces for impact.
+				<br><div onclick="eAttack();" class=confirm>OK</div>`;
+		}
+		else if (a == 'Use Item') {
+			popup.style.display = 'inline-flex';
+			if (gameInfo.history.items == 0) popup.innerHTML = `You don't have any items!`;
+			else if (gameInfo.history.items != 10) popup.innerHTML = `You still don't have any items`;
+			else popup.innerHTML = `You used your special item and defeated the enemy! Psyche!`;
+			gameInfo.history.items++;
+			ptob.bat = false;
+			popup.innerHTML += `<br><div onclick="eAttack();" class=confirm>OK</div>`;
+		}
+		else if (a == 'Sled!') {
+			if (gameInfo.party.reduce((a,b) => a + b.stm, 0) > 10 &&
+				gameInfo.party.reduce((a,b) => a + b.lvl, 0)/gameInfo.party.length > 5+Math.random()*10) {
+				ptob.bat = false;
+				popup.style.display = 'inline-flex';
+				popup.innerHTML = `You successfully sled away from the battle!
+				<br><div onclick="updateRace();" class=confirm>OK</div>`;
+			} else {
+				popup.style.display = 'inline-flex';
+				popup.innerHTML = `You failed to sled away and lost some stamina!
+				<br><div onclick="eAttack();" class=confirm>OK</div>`;
+				for (let p of gameInfo.party) {
+					p.stm -= 1;
+					if (p.stm < 1 && gameInfo.party.indexOf(p) > 0) gameInfo.party.pop();
+				}
+			}
+		}
+		else if (a == 'Back') addActions(['Start Race', 'Check Party', 'Look Around', 'Save Game', 'Delete Game']);
+		else if (a == 'Save Game') localStorage.gameInfo = JSON.stringify(gameInfo);
+		else if (a == 'Delete Game') {
+			popup.style.display = 'inline-flex';
+			popup.innerHTML = `Are you sure?
+				<br><div onclick="localStorage.gameInfo = ''; window.location.reload();">Yes</div>
+				<div onclick="popup.style.display='none'" class=confirm>Cancel</div>`;
+		}
+		else {
+			popup.style.display = 'inline-flex';
+			popup.innerHTML = `Something went wrong! select another action.
+				<br><div onclick="popup.style.display='none'" class=confirm>OK</div>`;
+		}
+	}
+	function story(e) {
+		let temp = window.nmInput?.value||'';
+		let board = [[],[`HEY! Move it kid! You're blocking the slopes with your stuuupid tobaggan!`,'😊','🤹🏼‍♂️',2],
+		[`Oh great. It's my childhood rival<br><input id=nmInput type=text> on his golden sled.`,'😊','🤹🏼‍♂️',1],
+		[`What? No it's not ${temp}. It's Ricky! Are you stupid, or just dumb?`,'😊','🤹🏼‍♂️',2],
+		[`Whatever. Just move it you solo L O S E R!`,'😊','🤹🏼‍♂️',2],
+		[`Ricky sleds away laughing hysterically. And is really fast too.`,'😊','',2],
+		[`*Sad crying*`,'😊',,0],[`Well, that was rude. You should beat him at his own game!`,'😊','',0],
+		[`W-Who are you?`,'😊','',1],
+		[`Ve are the Brothers Terry and Berri... and ve are very merry!`,'😊','😀😃',2],
+		[`Ve saw what happened and ve want to help you beat that bully Ricky!`,'😊','😀😃',2],
+		[`Terry and Berry have joined your party! But their mom says they can't stay long.`,'','',0],[],
+		[`Well well well. Someone got Lucky!`,'😀😃😊','🤹🏼‍♂️',2],
+		[`Maybe I shouldn't have been holding the brakes the whole time.`,'😀😃😊','🤹🏼‍♂️',2],
+		[`Next time I won't be so nice!`,'😀😃😊','🤹🏼‍♂️',2],
+		[`Ve are sorry ${gameInfo.party[0].nm}. Our mom said it is time to leave.`,'😊','😀😃',2],
+		[`Oh. Well thanks for you help guys. See you later!`,'😊','😀😃',1],
+		[`Terry and Berri have left the party`,'','',0],[],
+		[`Grrr. My A team was busy. Maybe beat me 8 more times and our champs will show up.`,'😊','🤹🏼‍♂️',2],[],
+		[`N-N-NOOO! That's impossible! I can't lose to a solo player! I demand a rematch!`,'😊','🤹🏼‍♂️',2],
+		[`Oh Ricky, it was all because of my team. WE beat you, TOGETHER!`,'😊','🤹🏼‍♂️',1],[`he...`,'😊','🤹🏼‍♂️',2],
+		[`I guess I just need my 5th teammate to beat you...`,'😊','🤹🏼‍♂️',2],
+		[`X has joined Ricky's party!`,'😊','🤹🏼‍♂️🦹🏻‍♂️',0],
+		[`No! Not X! He's the best tobagganer in the world! He's unbeatable!`,'😊','🤹🏼‍♂️🦹🏻‍♂️',1],
+		[`HAHAHA! You think X is good? He is my true ACE!`,'😊','🤹🏼‍♂️🦹🏻‍♂️',2],
+		[`Ricky and X take off and are even faster than ever!`,'😊','',0],
+		[`Without Berri and Terry. Maybe I am just a solo loser.`,'😊','',1],
+		[`Ahem! What am I, chopped liver?`,'😊',gameInfo.party[1]?.face,2],
+		[`You're right ${gameInfo.party[1]?.nm}! We still have a chance. We need to get stronger.`,'😊',gameInfo.party[1]?.face,1],
+		[],[`It\'s over RICKY! WE beat you even with X on your team!`,'😊','🤹🏼‍♂️🦹🏻‍♂️',1],
+		[`AAAAAAAAAAAA!!!!`,'😊','🤹🏼‍♂️🦹🏻‍♂️',2],
+		[`You beat Ricky once and for all. He storms off angrily`,'😊','🦹🏻‍♂️',0],
+		[`Aha! You are win. But feel free to keep racing.`,'😊','🦹🏻‍♂️',2],[]];
+		popup.innerHTML = board[e]?.[0]||'';
+		talker1.innerHTML = board[e]?.[1]||'';
+		talker2.innerHTML = board[e]?.[2]||'';
+		talking(board[e]?.[3]||0);
+		if (e == 0) {
+			popup.style.display = 'none';
+			lodge.style.display = battle.style.display = menu.style.display = popup.style.display = 'none';
+			slopes.style.display = 'block';
+			race.style.transform = 'skewX(-60deg)';
+			race.style.height = '50%';
+			race.style.width = '1000%';
+			race.style.transformOrigin = 'bottom center';
+			ctobag.classList.add('storyCtobag');
+			ptobag.innerHTML = `<div>${'😊'}</div>`;
+			ptobag.classList.add('storyPtobag');
+			setTimeout(() => story(1), 11000);
+		} else popup.style.display = 'inline-flex';
+		if ([19,21,33,38].includes(e)) {popup.style.display = talkers.style.display = 'none';}
+		else if (e == 3 && temp == 'Ricky') popup.innerHTML = `Wow. I'm suprised you remembered. That has got to be a first.`;
+		else if (e == 5) {
+			talker1.style.transform = 'rotate(180deg)';
+			ctobag.classList.remove('storyCtobag');
+			ctobag.style.display = 'none';
+		}
+		else if (e == 7) talker1.style.transform = '';
+		else if (e == 12) {
+			race.style.width = '100%';
+			ptobag.classList.remove('storyPtobag');
+			popup.style.display = talkers.style.display = 'none';
+			loadLodge();
+			ctobag.style.display = 'block';
+		}
+		else if (e == 18) gameInfo.party = gameInfo.party.filter(p => p.nm != 'Terry' && p.nm != 'Berri');
+		else if (e == 24) {
+			setTimeout(() => popup.innerHTML = 'he... ', 10);
+			setTimeout(() => popup.innerHTML += 'he... ', 1000);
+			setTimeout(() => popup.innerHTML += 'he...', 2000);
+			setTimeout(() => popup.innerHTML += `<br><div onclick="story(${parseInt(e)+1})" class=confirm>Next</div>`, 3000);
+			gameInfo.chars.splice(gameInfo.chars.findIndex(p => p.nm == 'X'), 1);
+		}
+		else if (e == 29 && gameInfo.party.find(p => p.nm == 'X')) {
+			gameInfo.party.splice(gameInfo.party.findIndex(p => p.nm == 'X'), 1);
+			popup.innerHTML = 'Noooo. First Berri and Terry. And now X!? Maybe I am just a solo loser.';
+		}
+		popup.innerHTML += `<br><div onclick="story(${parseInt(e)+1})" class=confirm>Next</div>`;
+	}
+	function talking(e) {
+		talkers.style.display = '';
+		if (e == 0) {
+			talker1.setAttribute('class','silent');
+			talker2.setAttribute('class','silent');
+		} else if (e == 1) {
+			talker1.setAttribute('class','talking');
+			talker2.setAttribute('class','silent');
+		} else {
+			talker2.setAttribute('class','talking');
+			talker1.setAttribute('class','silent');
+		}
+	}
+</script>
