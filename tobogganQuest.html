@@ -1,17 +1,17 @@
 <!DOCTYPE html>
 <title>Toboggan Quest</title>
-<!-- An RPG about tobagganing and freindship
+<!-- An RPG about tobagganing and friendship
 		Player builds a "party" of four tobagganers at the "lodge"
-		Each tobagganer has stats: Speed, Control, Weight, and Stamina
-		After each race party memebers gain experience and level up
+		Each tobagganer has stats: Weight, Stamina, and Max Stamina
+		After each race/battle party memebers gain experience and level up
 		The race will consist of "random encounters" of the following:
 			Obstacles (trees, rocks, penguins, polar bears)
 			Turns and straights (still an RPG encounter)
-			QTE (jumps/boosts, members fall off if failed)
-		Player wins if they reach the finish first (opponent moves at a constant slow speed)
+			QTE (members can fall off if failed)
+		Player wins if they reach the finish first (opponent moves at a constant speed)
 	Vibe coded with Claude Sonnet
 	Created by cswert
-	Last modified 13 Feb 2026-->
+	Last modified 28 Feb 2026-->
 <head>
 <html lang=en>
 <meta charset=UTF-8>
@@ -85,8 +85,10 @@
 	.ptobag {width: 7%; height: 15%; position: absolute; bottom: 0%; left: 42.5%;
 		background: rgb(81, 58, 22); justify-items: center; block-size: auto;}
 	.ctobag {width: 7%; height: 15%; position: absolute; bottom: 0%; left: 42.5%;
-		background: goldenrod; justify-items: center; block-size: auto;}
-	#race {width: 100%; height: 0px; position: absolute; bottom: 0;background: snow;}
+		background: goldenrod; justify-items: center; block-size: auto; transform-origin: top center;}
+	#race {width: 100%; height: 0px; position: absolute; bottom: 0;background: snow; 
+		transform-origin: bottom center; transition: height 50ms ease-out, transform 50ms ease-out;}
+	#miniMap {width: 5.5%; height: 50%; position: absolute; top: 20%; right: 8%; background: rgba(0, 0, 0, 0.33);}
 	.tree {
 		width: 10%;
 		height: 40%;
@@ -117,11 +119,24 @@
 		background-position: center;
 		background-image: url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGAAAAB0CAMAAABNAceHAAAAD1BMVEUAAAAAAAAWEQn7+/v3tAydH/PiAAAAA3RSTlMGgfqBCwpkAAACnElEQVR42tXaC26EMAwEUGbi+5+50m7AaZK1E2z6Gak/CebVhpVWtMdOAPAd4EgP2AXZ9WPy+x8bguSjAj8naT8PC7SC9AHyR6AdJA+QPwJ/HcAfB0A3/w4AjgPJAJpGDDDCwOubvi0RqAX9PvIA/a6WAekA0AD1C7IAvCrfxTyL8wFcQC3NA9gCeAwgzrp8oHbJO9fdmvo6IEVeH/UTUgECFJHXCKyfASYCpPQhUwGZJBOY1YvkATIKbAHGAY79aQBJ6QSSiReBVejrhYkAr15qfZvwy0CvaVcfH4FnRMMxcUCJ3Hd3YJumvpSSMgLnKUWBkABtbOvfkYQlsUbqb6z1OSPwTJmGUQEKhAS/X9YAbAL0BigSEugDhV3uLYjiA/sCjAEMAcsAtwCokNmvAlTYWBCWgX2hPUdMQAYBK/3uABrW6FZXF7QJ4BIQGMAUeCZlAA3HrAxwaP++gMgA8RHYRoof2QPANqWk74gZAAMDREfgwwDGSxy4zNENadYBZgHIBcQAIhvS/DzA1A0VeRgQPgzwHiCB/iUg1I88gFvAvsAdAPyeAGAMsCdwB5g9irgLwHh41gt+v3CSef8I0Afa4/VnGP2d4ANCzVXQtgPU/lHwAZk8k0F/d8ongA6gZ3wvGJ7t7gsynjoCdTsmIMYALmAcodkHhEQSIGKOAOsIzS0ANiAhQIUEwF4SDcEBxAWogC3YN5G1pDggRhRwhHIboAOI8UoWBgB/Bp4R5xrABWpm9f569YXmC6T+7AOkc5dqaMY6CUcCYNb7gC8Y9QHA7Uf/djERIMlPb0gzgPk7ojYGgDO8YvZrAOCjUatnJ5E01j+FRsJ5MDD2e7kMXY95rNFvExrn0PHu97P+LwGBP1DUbIyL45nAbP8CpDBEuFNtOs4AAAAASUVORK5CYII=);
 	}
+	.turn {
+		width: 14%;
+		height: 50%;
+		background: yellow;
+		border: 10px solid black;
+		transform: rotate(45deg);
+		position: absolute;
+		border-radius: 25px;
+		text-align: center;
+		color: black;
+		font-size: 500%;
+	}
+	.turn::after{display: inline-block; transform: rotate(315deg); content: var(--val, '↰↱');}
 	#party {display: flex; align-items: end; justify-content: space-around; position: relative;
 		top: 25%; width: 50%; height: 3%; background: rgb(81, 58, 22);}
 	.qt{width: 6%; height: 10%; background: magenta; position: absolute; justify-self: center;
- 		align-self: anchor-center; border-radius: 50%; text-align: center;}
-	.qtRing{width: 30%; height: 50%; border: 5px solid yellow; border-radius: 50%;
+ 		align-self: anchor-center; border-radius: 50%; text-align: center; top: 45%; align-content: center;}
+	.qtRing{width: 50%; height: 50%; border: 5px solid yellow; border-radius: 50%; top: 30%; transform: scaleY(1.777);
 		position: absolute; justify-self: center; align-self: anchor-center; box-sizing: border-box;}
 	.storyPtobag{transform: rotate(60deg); block-size:none; left: 0%; bottom: -2%; height: 25%;
 		animation: move 10s forwards;}
@@ -149,6 +164,7 @@
 		#touch {display: inline-flex;}
 		#gameWindow {width: 100%;}
 		#lodge, #slopes, #battle {height: auto;}
+		#race {zoom: 0.75;}
 	}
 </style>
 </head>
@@ -176,6 +192,10 @@
 				<div>🧙🏿</div>
 			</div>
 			<div id=ptobag class=ptobag></div>
+			<div id=miniMap>
+				<div style='position: absolute; top: 0%'>😊</div>
+				<div style='position: absolute; top: 0%; right: 0'>🤹🏼‍♂️</div>
+			</div>
 		</div>
 		<div id=battle>
 			<div id=party></div>
@@ -200,13 +220,14 @@
 	let gameInfo = localStorage.gameInfo ? JSON.parse(localStorage.gameInfo) : 
 		{party: [{lvl:1, stm:10, mxs:10, wt:Math.round(Math.random()*10), face:'😊'},
 		{nm: "Terry", lvl:1, stm:10, mxs:10, wt:3, face:"😀"}, {nm: "Berri", lvl:1, stm:10, mxs:10, wt:3,  face:"😃"}],
-		history: {items:0, raceW:0, raceL:0, treeW:0, treeL:0, rockW:0, rockL:0, penguinW:0, penguinL:0, quickTimeW:0, quickTimeL:0}, 
+		history: {items:0, raceW:0, raceL:0, treeW:0, treeL:0, rockW:0, rockL:0, penguinW:0, penguinL:0, 
+		quickTimeW:0, quickTimeL:0, turnW:0, turnL:0}, flag: false,
 	 	chars: [{nm:'Alex'}, {nm:'Blake'}, {nm:'Casey'}, {nm:'Drew'}, {nm:'Elliot'}, {nm:'Finley'},
-		{nm:'Gray'}, {nm:'Harper'}, {nm:'Ivy'}, {nm:'Jimmers'}, {nm:'Kendall'}, {nm:'Logan'}, {nm:'Matt'},
+		{nm:'Gray'}, {nm:'Harper'}, {nm:'Ivy'}, {nm:'Jimmers'}, {nm:'Kendall'}, {nm:'Li'}, {nm:'Matt'},
 		{nm:'Nico'}, {nm:'Oakley'}, {nm:'Peyton'}, {nm:'Quinn'}, {nm:'Riley'}, {nm:'Skyler'}, 
 		{nm:'Taylor'}, {nm:'Uta'}, {nm:'Val'}, {nm:'Winter'}, {nm:'Yuliana'}, {nm:'X'}, {nm:'Zion'}
 	]};
-	let track = [], ptob = {}, ctob = {}; keys = {}, eHP = 0;
+	let track = [], ptob = {}, ctob = {}; keys = {}, eHP = 0, rL = 0;
 	window.onkeydown = function(e) {
 		keys[e.key] = true;
 		if (e.key == 'e' || e.key == 'Enter') {
@@ -256,8 +277,7 @@
 	};
 	if (!gameInfo.party[0].nm) {
 		popup.style.display = 'inline-flex';
-		popup.innerHTML = `Welcome to Toboggan Quest!<br>Please enter your name:
-			<br><input id=nmInput type=text>
+		popup.innerHTML = `Welcome to Toboggan Quest!<br>Please enter your name:<br><input id=nmInput type=text>
 			<br><div onclick="gameInfo.party[0].nm=nmInput.value; story(0);" class=confirm>Start Game</div>`;
 			nmInput.focus();
 		for (let c of gameInfo.chars) {
@@ -265,7 +285,7 @@
 			c.face = String.fromCodePoint(0x1F600 + Math.floor(Math.random() * 80));
 			c.lvl = 1; c.stm = c.mxs = Math.round(Math.random()*10)+1;
 			c.wt = Math.round(Math.random()*10+1); c.prob = Math.random();
-			c.cond = Math.round(Math.random()*10) + ' ' + Object.keys(gameInfo.history)[Math.ceil(Math.random()*9)];
+			c.cond = Math.round((Math.random()*9)+1) + ' ' + Object.keys(gameInfo.history)[Math.ceil(Math.random()*9)];
 			if (Math.random() < 0.25) c.cond = 'none';
 		}
 
@@ -275,7 +295,7 @@
 		menu.style.display = lodge.style.display = 'flex';
 		info.innerHTML = 'Start a new EPIC race';
 		sofa.innerHTML = fireplace.innerHTML = bar.innerHTML = table1.innerHTML = table2.innerHTML = table3.innerHTML = '';
-		addActions(['Start Race', 'Check Party', 'Look Around', 'Save Game', 'Delete Game']);
+		addActions(['Start Race', 'Check Party', 'Check Stats', 'Look Around', 'Save Game', 'Delete Game']);
 		for (let c of gameInfo.chars) {
 			if (c.stm < c.mxs) c.stm += 1;
 			if (!gameInfo.party.find(p => p.nm == c.nm) && Math.random() < c.prob) {
@@ -285,10 +305,10 @@
 			}
 		}
 		for (let p of gameInfo.party) {p.stm = p.mxs;}
-		if (gameInfo.history.raceW == 1) story(13);
-		else if (gameInfo.history.raceW == 2) story(20);
-		else if (gameInfo.history.raceW == 10) story(22);
-		else if (gameInfo.history.raceW == 10) story(34);
+		if (gameInfo.history.raceW == 1 && gameInfo.flag) story(13);
+		else if (gameInfo.history.raceW == 2 && gameInfo.flag) story(20);
+		else if (gameInfo.history.raceW == 10 && gameInfo.flag) story(22);
+		else if (gameInfo.history.raceW == 11 && gameInfo.flag) story(34);
 	}
 	function startRace() {
 		if (gameInfo.party.length < 3) {
@@ -299,19 +319,25 @@
 		}
 		lodge.style.display = battle.style.display = menu.style.display = popup.style.display = 'none';
 		slopes.style.display = 'block';
-		for (let i = 0; i < (Math.random()*100*gameInfo.party.length)+100; i++) {
+		rL = 0;
+		for (let i = 0; i < (Math.random()*100*gameInfo.history.raceW)+25; i++) {
 			track.push({obstacle:[], length:Math.random()*50+200, turn:Math.random()< .5 ? Math.random()*120-30 : 0});
-			for (let j = 0; j < Math.random()*2; j++) {
+			rL += track.at(-1).length;
+			for (let j = 0; j < Math.random()*4; j++) {
 				if (Math.random() < 0.8 || i < 10) continue;
 				track[i].obstacle.push({type:['tree','tree','tree','rock','penguin'][Math.floor(Math.random()*5)], 
 					pos:Math.random()*track[i].length, size:Math.random()+.1});
 			}
+			if (track[i].obstacle.length == 0 && Math.random() < 0.05) {
+				for (let j = 0; j < 5; j++) {
+					track[i].obstacle.push({type:'turn', pos:(j * 25) - 10});
+				}
+			}
 		}
 		race.style.borderTop = '';
-		ptob.left = 42.5;
+		ptob.left = 48;
 		ptob.pos = 0;
-		ctob = {spd: Math.random()*500*((gameInfo.history.raceW+1)/10), pos:50};
-		ctobag.style.left = '42.5%';
+		ctob = {spd: Math.random()*10 + 50*((gameInfo.history.raceW+1)/10), pos:0};
 		updateRace();
 	}
 	function updateRace() {
@@ -319,60 +345,87 @@
 		slopes.style.display = 'block';
 		ptobag.innerHTML = '';
 		ptob.bat = false;
+		if (ptob.pos == 0) {
+			ptob.bat = true;
+			popup.style.display = 'inline-flex';
+			popup.innerHTML = `Starting the Race in 3...`;
+			setTimeout(() => {ctobag.style.left = '41%'; ctobag.style.bottom = '0%';}, 50);
+			setTimeout(() => popup.innerHTML = 'Starting the Race in 2...', 1000);
+			setTimeout(() => popup.innerHTML = 'Starting the Race in 1...', 2000);
+			setTimeout(() => {popup.style.display = 'none'; ptob.bat = false; updateRace();}, 3000);
+		}
 		for (let p of gameInfo.party) {ptobag.innerHTML += `<div>${p.face}</div>`;}
 		let twt = gameInfo.party.reduce((a,b) => a + b.wt, 0);
 		let tstm = gameInfo.party.reduce((a,b) => a + b.stm, 0);
 		let tmxs = gameInfo.party.reduce((a,b) => a + b.mxs, 0);
-		ptob.spd = 9.8*twt*(tstm/tmxs);
-		ptob.pos += ptob.spd;
-		ctob.pos += ctob.spd;
-		ctobag.style.bottom = (ctob.pos - ptob.pos) + '%';
-		let ht = race.clientHeight/slopes.clientHeight*100;
-		let bottom = parseFloat(ctobag.style.bottom);
-		ctobag.style.transform = `scale(${Math.max(0.1, 1 - (bottom/ht) * 0.7)})`;
-		ctobag.style.transformOrigin = 'bottom center';
-		if (bottom > ht) ctobag.style.bottom = ht - 5 + '%';
-		ctobag.style.left = (parseFloat(ctobag.style.left) + Math.random()*4-2) + '%';
+		ptob.spd = twt*Math.max(tstm/tmxs,.85);
+		if (ptob.pos <= rL) ptob.pos += ptob.spd;
+		miniMap.children[0].style.top = (ptob.pos/rL)*90 + '%';
 		if (keys['a'] || keys['ArrowLeft']) ptob.left -= (ptob.left-5 > 0) ? 5 : 0;
 		else if (keys['d'] || keys['ArrowRight']) ptob.left += (ptob.left+5 < 85) ? 5 : 0;
 		ptobag.style.left = ptob.left + '%';
 		race.innerHTML = '';
-		race.style.height = '0px';
+		let raceH = 0;
+		for (let j = 0; j < 5 && j < track.length; j++) raceH += track[j].length/3;
+		race.style.height = raceH + 'px';
+		let accH = 0;
 		for (let i = 0; i < 5; i++) {
 			if (i >= track.length) {race.style.borderTop = 'solid 5px yellow'; break;}
-			race.style.height = parseInt(race.style.height) + track[i].length/3 + 'px';
+			accH += track[i].length/3;
 			if (i == 0 && track.slice(i, i + 5).some(t => t.turn != 0)) {
 				let turnAngle = track.slice(i, i + 5).find(t => t.turn != 0).turn;
 				race.style.transform = `skewX(${turnAngle*.1}deg)`;
-				race.style.transformOrigin = 'bottom center';
 			}
 			for (let o of track[i].obstacle) {
 				let obs = document.createElement('div');
 				obs.classList.add(o.type);
-				obs.style.bottom = (parseInt(race.style.height) - o.pos/3) + 'px';
-				obs.style.left = (o.pos % 80 + 10) + '%';
-				obs.style.transform = `scale(${3/(i+1)+o.size})`;
+				obs.style.bottom = (accH - o.pos/3) + 'px';
+				if (o.type != 'turn') obs.style.left = (o.pos % 80 + 10) + '%';
+				else obs.style.left = o.pos+'%';
+				obs.style.transform = `scale(${3*(1 - (accH - o.pos/3)/raceH) + o.size})`;
 				obs.style.transformOrigin = 'bottom center';
+				if (o.type == 'turn' && track[i].turn > 0) obs.style.setProperty('--val', '"↰"');
+				else if (o.type == 'turn') obs.style.setProperty('--val', '"↱"');
 				race.appendChild(obs);
 				if (i == 0 && Math.abs(ptob.left - parseFloat(obs.style.left)) < 10) {
+					if (!ptob.bat) encounter(o.type);
 					ptob.bat = true;
-					encounter(o.type);
+					track.splice(i, 1);
 				}
 			}
 		}
-		track.shift();
+		if (ctob.pos <= rL+500) {
+			ctob.pos += ctob.spd;
+			miniMap.children[1].style.top = (ctob.pos/rL)*90 + '%';
+			ctobag.style.left = (parseFloat(ctobag.style.left) + Math.random()*4-2) + '%';
+			if (parseFloat(ctobag.style.left) < 10) ctobag.style.left = '10%';
+			else if (parseFloat(ctobag.style.left) > 83) ctobag.style.left = '83%';
+		}
+		if (ctob.pos - ptob.pos > race.clientHeight / slopes.clientHeight * 100) {
+			ctobag.style.bottom = (race.clientHeight - ctobag.clientHeight) + 'px';
+			ctobag.style.transform = `scale(${Math.max(.01, 1 - (ctob.pos - ptob.pos) / rL)})`;
+		} else ctobag.style.bottom = (ctob.pos - ptob.pos) + '%';
+		let remainingSpd = ptob.spd;
+		while (track.length > 0 && track[0].length < remainingSpd) {
+			remainingSpd -= track[0].length;
+			track.shift();
+		}
+		if (track.length > 0) track[0].length -= remainingSpd; 
 		if (track.length <= 1) {
+			let temp = ctob.pos > ptob.pos;
 			popup.style.display = 'inline-flex';
-			let temp = ctobag.style.bottom > ptobag.clientHeight/window.innerHeight*100;
 			popup.innerHTML = (temp ? `You Are Lose!` : `You won.`) + `<br><div onclick="loadLodge()" class=confirm>OK</div>`;
 			if (temp) gameInfo.history.raceL++;
-			else gameInfo.history.raceW++;
-			for (let p of gameInfo.party) {
-				let gain = Math.round(Math.random()*5)
-				p.mxs += gain; p.stm = gain; p.lvl++;
+			else {
+				gameInfo.flag = true;
+				gameInfo.history.raceW++;
+				for (let p of gameInfo.party) {
+					p.mxs += Math.round(Math.random()*5);
+					p.lvl = Math.ceil(p.lvl+.01);
+				}
 			}
 		}
-		else if (!ptob.bat) setTimeout(() => updateRace(), Math.min(250,30000/Math.round(ptob.spd)));
+		else if (!ptob.bat) setTimeout(() => updateRace(), 50);
 	}
 	function encounter(e) {
 		if (Math.random() < .75) {quickTime(); return;}
@@ -383,56 +436,63 @@
 		enemy.className = e;
 		enemy.style.width = '70%';
 		enemy.style.position = 'relative';
-		enemy.style.height = (e == 'rock') ?  '25%' : '70%';
+		enemy.style.height = (e == 'rock') ?  '25%' : (e == 'turn') ? '61%': '70%';
+		enemy.style.fontSize = '1000%';
 		eHP = Math.random()*gameInfo.party.reduce((a,b) => a + b.lvl, 0);
 		party.innerHTML = ptobag.innerHTML;
 	}
 	function quickTime() {
-		let tar = ['w', 'a', 's', 'd', 'e'][Math.floor(Math.random()*5)];
+		let tarSymbol = ['↑', '←', '↓', '→', '↵'][Math.floor(Math.random()*5)];
+		let tarKey = {'↑': ['ArrowUp', 'w', 'W'], '←': ['ArrowLeft', 'a', 'A'], '↓': ['ArrowDown', 's', 'S'], '→': ['ArrowRight', 'd', 'D'], '↵': ['Enter', 'e', 'E']}[tarSymbol];
 		let qt = document.createElement('div');
 		qt.classList.add('qt');
-		qt.innerHTML = tar;
+		qt.innerHTML = tarSymbol;
 		let qtR = document.createElement('div');
 		qtR.id = 'qtR';
 		qtR.classList.add('qtRing');
-		slopes.appendChild(qtR);
-		slopes.appendChild(qt);
-		qtR.style.width = Math.ceil(qtR.clientWidth/slopes.clientWidth*100) + '%';
-		qtR.style.height = Math.ceil(qtR.clientHeight/slopes.clientHeight*100) + '%';
+		gameWindow.appendChild(qtR);
+		gameWindow.appendChild(qt);
+		qtR.style.width = qtR.style.height = Math.ceil(qtR.clientHeight/gameWindow.clientHeight*100) + '%';
+		let levelMult = Math.min(gameInfo.party[0].lvl,5);
 		let interval = setInterval(() => {
-			qtR.style.width = (parseFloat(qtR.style.width) - Math.min(ptob.spd/15,1.5)) + '%';
-			qtR.style.height = (parseFloat(qtR.style.height) - Math.min(ptob.spd/25,2.5)) + '%';
-			let tt = parseInt(qtR.style.width);
+			qtR.style.width = qtR.style.height = (parseFloat(qtR.style.height) - .3*levelMult) + '%';
+			qtR.style.top = (50 - parseFloat(qtR.style.height) / 2) + '%';
+			let tt = parseFloat(qtR.style.width);
 			if (ptob.bat == false) {
-				slopes.removeChild(qt);
-				slopes.removeChild(qtR);
+				gameWindow.removeChild(qt);
+				gameWindow.removeChild(qtR);
 				clearInterval(interval);
 				updateRace();
 			} else if (popup.style.display != 'none') {/*do nothing*/}
-			else if (keys[tar] && tt >= 5 && tt <= 15) {ptob.bat = false; gameInfo.history.quickTimeW++;}
-			else if (tt <= 0 || (Object.values(keys).includes(true) && tt < 25) && ptob.bat === true) {
-				ctob.pos += 10;
+			else if (tarKey.some(k => keys[k]) && tt > 1 && tt <= 15) {
+				ptob.bat = false;
+				gameInfo.history.quickTimeW++;
+				ptob.pos += 500;
+			}
+			else if (tt <= 1 || (Object.values(keys).includes(true) && tt < 40) && ptob.bat === true) {
+				ctob.pos += 500;
 				gameInfo.history.quickTimeL++;
-				if (Math.random() < .5 && gameInfo.party.length > 1) {
+				if (gameInfo.party.length > 1 && gameInfo.party.at(-1).stm < gameInfo.party.at(-1).mxs/3) {
 					popup.style.display = 'inline-flex';
 					popup.innerHTML = `${gameInfo.party[gameInfo.party.length-1].nm} fell off!
 						<br><div onclick="popup.style.display='none'; ptob.bat = false;" class=confirm>OK</div>`;
 					gameInfo.party.pop();
 				} else ptob.bat = false;
 			}
-		}, 100);
+		}, 100/levelMult);
 	}
 	function eAttack() {
 		popup.style.display = 'inline-flex';
-		if (Math.random() < 0.75) popup.innerHTML = `The enemy is a ${enemy.className} and doesn't do anything.`;
+		if (Math.random() < .75) popup.innerHTML = `The enemy is a ${enemy.className} and doesn't do anything.`;
 		else if (Math.random() < .05) {
 			let lost = gameInfo.party[Math.floor(Math.random()*gameInfo.party.length)];
-			if (lost > 0) gameInfo.party = gameInfo.party.filter(p => p.nm != lost.nm);
+			if (lost.nm != gameInfo.party[0].nm) gameInfo.party = gameInfo.party.filter(p => p.nm != lost.nm);
 			else gameInfo.party[0].stm = 0;
 			popup.innerHTML = `ENEMY SNIPER took out ${lost.nm} and they fell off the tobaggan!`;
 		} 
 		else {
-			let type = (enemy.className == 'rock') ? 'A sharp rock' : 'A swarm of bees';
+			let type = {rock:'A pointy rock', tree:'A swarm of bees', penguin:'A rouge ice cube',
+				turn:'A really sharp turn'}[enemy.className];
 			let target = gameInfo.party[Math.floor(Math.random()*gameInfo.party.length)];
 			target.stm -= Math.round(Math.random()*3)+1 / (ptob.def ? 2 : 1);
 			if (target.stm <= 0 && target.nm != gameInfo.party[0].nm) {
@@ -442,8 +502,7 @@
 			else popup.innerHTML = `${type} attacked ${target.nm}`;
 		}
 		if (gameInfo.party[0].stm <= 0) {
-			popup.innerHTML += `<br>You pass out. The race is over.
-				<br><div onclick="loadLodge()" class=confirm>OK</div>`;
+			popup.innerHTML += `<br>You pass out. The race is over. <br><div onclick="loadLodge()" class=confirm>OK</div>`;
 			gameInfo.history[`${enemy.className.split(' ')[0]}L`]++;
 			gameInfo.history[`raceL`]++;
 			gameInfo.party[0].stm = gameInfo.party[0].mxs;
@@ -462,7 +521,7 @@
 		infoUpdate(action.children[i].innerHTML);
 	}
 	function reduceParty() {
-		addActions(['Start Race', 'Check Party', 'Look Around', 'Save Game', 'Delete Game']);
+		addActions(['Start Race', 'Check Party', 'Check Stats', 'Look Around', 'Save Game', 'Delete Game']);
 		if (gameInfo.party.length > 5) {
 			popup.style.display = 'inline-flex';
 			popup.innerHTML = `Your party is too large! Please remove a memeber.
@@ -475,29 +534,31 @@
 	}
 	function saveGame() {localStorage.gameInfo = JSON.stringify(gameInfo);}
 	function infoUpdate(a) {
-		if (a == 'Start Race') info.innerHTML = 'Start a new EPIC race';
-		else if (a == 'Check Party') info.innerHTML = 'View your current tobagganing party';
-		else if (a == 'Look Around') info.innerHTML = 'Explore the lodge and meet new tobagganers';
-		else if (a == 'Save Game') info.innerHTML = 'Save your current progress';
-		else if (a == 'Delete Game') info.innerHTML = 'Delete your current save file (cannot be undone)';
-		else if (a == 'Sofa') info.innerHTML = 'A comfy looking sofa. Perfect for relaxing after a long day of tobagganing.';
-		else if (a == 'Fireplace') info.innerHTML = 'A warm fireplace crackling with a cozy fire. It radiates warmth throughout the lodge.';
-		else if (a == 'Bar') info.innerHTML = 'A rustic bar stocked with hot cocoa and snacks. A great place to refuel before your next race.';
+		let update = [['Start Race','Start a new EPIC race'],
+		['Check Party','View your current tobagganing party'],
+		['Check Stats','View your current stats'],
+		['Look Around','Explore the lodge and meet new tobagganers'],
+		['Save Game','Save your current progress'],
+		['Delete Game','Delete your current save file (cannot be undone)'],
+		['Sofa','A comfy looking sofa. Perfect for relaxing after a long day of tobagganing.'],
+		['Fireplace','A warm fireplace crackling with a cozy fire. It radiates warmth throughout the lodge.'],
+		['Table','A wooden table with chairs around it. You might find some interesting people to talk to here.'],
+		['Attack','Attempt to damage your opponent.'],
+		['Defend','Brace yourself against an incoming attack.'],
+		['Use Item','Use an item from your inventory.'],
+		['Sled!','Try to escape the battle by sledding away!'],
+		['Back','Go back to main selection']];
+		if (update.some(x => a == x[0])) info.innerHTML = update.find(x => a == x[0])[1];
 		else if (a.includes('Table')) info.innerHTML = 'A wooden table with chairs around it. You might find some interesting people to talk to here.';
-		else if (parseInt(a) > 0) {
+		else if (parseFloat(a) > 0) {
 			let p = gameInfo.chars.find(x => x.nm == a.match(/\((.+)\)/)[1]);
 			info.innerHTML = `Talk to ${p.nm} and see if they want to join your party
 				<br>Level: ${p.lvl}   Stamina: ${p.stm}   Weight: ${p.wt}`;}
 		else if (a.includes('Remove')) info.innerHTML = `Remove ${a.split(' ')[1].replace(')', '')} from your party.`;
-		else if (a == 'Attack') info.innerHTML = 'Attempt to damage your opponent.';
 		else if (a.includes('Attack ')) {
 			let p = gameInfo.party.find(x => x.nm == a.split(' ')[1]);
 			info.innerHTML = `Attack with ${p.nm}. They have ${p.stm} stamina left.`;
 		}
-		else if (a == 'Defend') info.innerHTML = 'Brace yourself against an incoming attack.';
-		else if (a == 'Use Item') info.innerHTML = 'Use an item from your inventory.';
-		else if (a == 'Sled!') info.innerHTML = 'Try to escape the battle by sledding away!';
-		else if (a == 'Back') info.innerHTML = 'Go back to main selection';
 		else info.innerHTML = 'Something broke... PANIC! or select another action';
 	}
 	function selectAction(a) {
@@ -511,6 +572,19 @@
 				row.innerHTML = `<td>${p.nm}</td><td>${p.lvl}</td><td>${p.stm}</td><td>${p.wt}</td>`;
 				ttt.appendChild(row);
 			}
+		}
+		else if (a == 'Check Stats') {
+			popup.style.display = 'inline-flex';
+			let e = gameInfo.history;
+			popup.innerHTML = `<table id=ttt><tr><th>Stat Name</th><th>Wins</th><th>Losses</th></tr>
+				<tr><td>Races</td><td>${e.raceW}</td><td>${e.raceL}</td></tr>
+				<tr><td>Quick Times</td><td>${e.quickTimeW}</td><td>${e.quickTimeL}</td></tr>
+				<tr><td>Tree</td><td>${e.treeW}</td><td>${e.treeL}</td></tr>
+				<tr><td>Rock</td><td>${e.rockW}</td><td>${e.rockL}</td></tr>
+				<tr><td>Penguin</td><td>${e.penguinW}</td><td>${e.penguinL}</td></tr>
+				<tr><td>Turn</td><td>${e.turnW}</td><td>${e.turnL}</td></tr>
+				</table>
+				<br><div onclick="popup.style.display='none'" class=confirm>OK</div>`;
 		}
 		else if (a == 'Look Around') addActions(['Sofa', 'Fireplace', 'Bar', 'Table 1', 'Table 2', 'Table 3', 'Back']);
 		else if (a == 'Sofa' || a == 'Fireplace' || a == 'Bar' || a.includes('Table')) {
@@ -527,7 +601,7 @@
 			}
 			addActions(peeps.concat(['Back']));
 		}
-		else if (parseInt(a) > 0) {
+		else if (parseFloat(a) > 0) {
 			let c = gameInfo.chars.find(x => x.nm == a.match(/\((.+)\)/)[1]);
 			if (c.nm == 'X') {
 				popup.style.display = 'inline-flex';
@@ -539,15 +613,15 @@
 				talking(1);
 			}
 			else {
-				if (c.cond != 'none' || parseInt(c.cond) > gameInfo.history[c.cond.split(' ')[1]]) {
+				if (c.cond != 'none' || parseFloat(c.cond) > gameInfo.history[c.cond.split(' ')[1]]) {
 					popup.style.display = 'inline-flex';
 					popup.innerHTML = `Come back after you've ${c.cond.includes('W') ? 'won/beat' : 'lost/failed'}
-						${c.cond.split(' ')[1].slice(0, -1)} ${parseInt(c.cond)} times!
+						${c.cond.split(' ')[1].slice(0, -1)} ${parseFloat(c.cond)} times!
 						<br><div onclick="popup.style.display='none'" class=confirm>OK</div>`;
 				} else {
 					gameInfo.party.push(c);
 					document.getElementById(c.nm).remove();
-					addActions(['Start Race', 'Check Party', 'Look Around', 'Save Game', 'Delete Game']);
+					addActions(['Start Race', 'Check Party', 'Check Stats', 'Look Around', 'Save Game', 'Delete Game']);
 					popup.style.display = 'inline-flex';
 					popup.innerHTML = `${c.nm} has joined your party!
 						<br><div onclick="popup.style.display='none'; reduceParty();" class=confirm>OK</div>`;
@@ -575,7 +649,7 @@
 		else if (a.includes('Attack ')) {
 			let p = gameInfo.party.find(x => x.nm == a.split(' ')[1]);
 			popup.style.display = 'inline-flex';
-			if (p.stm > 1 &&  Math.random() < .8) {
+			if (p.stm > 1 &&  Math.random() < .9) {
 				eHP -= p.lvl * (p.stm/p.mxs);
 				enemy.classList.add('hit');
 				popup.innerHTML = `You hit the enemy for some damage!<br><div onclick="eAttack();" class=confirm>OK</div>`;
@@ -584,6 +658,14 @@
 					if (eHP <= 0) {
 						gameInfo.history[`${enemy.className.split(' ')[0]}W`]++;
 						ptob.bat = false;
+						for (let p of gameInfo.party) {
+							let gain = Math.round(Math.random()*2+1)/10;
+							if (p.lvl + gain > Math.ceil(p.lvl + 0.01)) {
+								p.mxs += Math.round(Math.random()*5+2);
+								p.stm += Math.ceil((p.mxs-p.stm)/80);
+								p.lvl = Math.ceil(p.lvl);
+							} else p.lvl += Math.round(gain*10)/10;
+						}
 						popup.innerHTML = `You defeated the enemy!<br><div onclick="updateRace();" class=confirm>OK</div>`;
 					}
 				}, 300);
@@ -637,6 +719,7 @@
 		}
 	}
 	function story(e) {
+		gameInfo.flag = false;
 		let temp = window.nmInput?.value||'';
 		let board = [[],[`HEY! Move it kid! You're blocking the slopes with your stuuupid tobaggan!`,'😊','🤹🏼‍♂️',2],
 		[`Oh great. It's my childhood rival<br><input id=nmInput type=text> on his golden sled.`,'😊','🤹🏼‍♂️',1],
@@ -675,7 +758,7 @@
 		talking(board[e]?.[3]||0);
 		if (e == 0) {
 			popup.style.display = 'none';
-			lodge.style.display = battle.style.display = menu.style.display = popup.style.display = 'none';
+			lodge.style.display = battle.style.display = menu.style.display = popup.style.display = miniMap.style.display = 'none';
 			slopes.style.display = 'block';
 			race.style.transform = 'skewX(-60deg)';
 			race.style.height = '50%';
@@ -700,20 +783,21 @@
 			popup.style.display = talkers.style.display = 'none';
 			loadLodge();
 			ctobag.style.display = 'block';
+			miniMap.style.display = '';
 		}
 		else if (e == 18) gameInfo.party = gameInfo.party.filter(p => p.nm != 'Terry' && p.nm != 'Berri');
 		else if (e == 24) {
 			setTimeout(() => popup.innerHTML = 'he... ', 10);
 			setTimeout(() => popup.innerHTML += 'he... ', 1000);
 			setTimeout(() => popup.innerHTML += 'he...', 2000);
-			setTimeout(() => popup.innerHTML += `<br><div onclick="story(${parseInt(e)+1})" class=confirm>Next</div>`, 3000);
+			setTimeout(() => popup.innerHTML += `<br><div onclick="story(${parseFloat(e)+1})" class=confirm>Next</div>`, 3000);
 			gameInfo.chars.splice(gameInfo.chars.findIndex(p => p.nm == 'X'), 1);
 		}
 		else if (e == 29 && gameInfo.party.find(p => p.nm == 'X')) {
 			gameInfo.party.splice(gameInfo.party.findIndex(p => p.nm == 'X'), 1);
 			popup.innerHTML = 'Noooo. First Berri and Terry. And now X!? Maybe I am just a solo loser.';
 		}
-		popup.innerHTML += `<br><div onclick="story(${parseInt(e)+1})" class=confirm>Next</div>`;
+		popup.innerHTML += `<br><div onclick="story(${parseFloat(e)+1})" class=confirm>Next</div>`;
 	}
 	function talking(e) {
 		talkers.style.display = '';
