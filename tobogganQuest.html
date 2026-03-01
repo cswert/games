@@ -337,7 +337,7 @@
 		race.style.borderTop = '';
 		ptob.left = 48;
 		ptob.pos = 0;
-		ctob = {spd: Math.random()*10 + 50*((gameInfo.history.raceW+1)/10), pos:0};
+		ctob = {spd: (Math.random()*10) - 5 + 50*((gameInfo.history.raceW+1)/10), pos:0};
 		updateRace();
 	}
 	function updateRace() {
@@ -453,9 +453,8 @@
 		gameWindow.appendChild(qtR);
 		gameWindow.appendChild(qt);
 		qtR.style.width = qtR.style.height = Math.ceil(qtR.clientHeight/gameWindow.clientHeight*100) + '%';
-		let levelMult = Math.min(gameInfo.party[0].lvl,5);
 		let interval = setInterval(() => {
-			qtR.style.width = qtR.style.height = (parseFloat(qtR.style.height) - .3*levelMult) + '%';
+			qtR.style.width = qtR.style.height = (parseFloat(qtR.style.height) - .1*Math.min(gameInfo.party[0].lvl,10)) + '%';
 			qtR.style.top = (50 - parseFloat(qtR.style.height) / 2) + '%';
 			let tt = parseFloat(qtR.style.width);
 			if (ptob.bat == false) {
@@ -479,7 +478,7 @@
 					gameInfo.party.pop();
 				} else ptob.bat = false;
 			}
-		}, 100/levelMult);
+		}, 16);
 	}
 	function eAttack() {
 		popup.style.display = 'inline-flex';
@@ -492,7 +491,7 @@
 		} 
 		else {
 			let type = {rock:'A pointy rock', tree:'A swarm of bees', penguin:'A rouge ice cube',
-				turn:'A really sharp turn'}[enemy.className];
+				turn:'A really sharp turn'}[enemy.className.split(' ')[0]];
 			let target = gameInfo.party[Math.floor(Math.random()*gameInfo.party.length)];
 			target.stm -= Math.round(Math.random()*3)+1 / (ptob.def ? 2 : 1);
 			if (target.stm <= 0 && target.nm != gameInfo.party[0].nm) {
