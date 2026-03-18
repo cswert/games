@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="en">
+<!-- A classic game of bingo with squares themed around WikiHow articles.
+		Choose a board size up to 10x10, and enter a custom list if desired
+		Open the wikiHow articles by clicking the "Generate article" button
+		Select a square to mark it with an X, auto win detection
+		Hover over square for a description of the condition
+	Vibe coded with Claude
+	Created by cswert
+	Last modified 12 Mar 2026-->
+<head>
+<meta charset=UTF-8>
+<meta name=viewport content='width=device-width, initial-scale=1.0'>
+<title>Wiki Bingo</title>
+<style>
+	body {font-family: 'Segoe UI', Arial, sans-serif; text-align: center; background: #1a1a2e;
+		color: #e0e0e0; padding: 2vmin; justify-items: center;}
+	#vals {width: 98%; height: 80vmin; background: #16213e; color: #e0e0e0;
+		border: 0.1vmin solid #0f3460; border-radius: 0.5em; padding: 1vmin;
+		font-size: 2vmin; resize: none; text-wrap-mode: nowrap;}
+	input[type=text] {background: #16213e; color: #e0e0e0; border: 0.1vmin solid #0f3460;
+		border-radius: 0.4em; font-size: 2vmin; display: none;}
+	input[type=number] {background: #16213e; color: #e0e0e0; border: 0.1vmin solid #0f3460;
+		border-radius: 0.4em; padding: 0.5vmin 1vmin; font-size: 2vmin; width: 5vmin; text-align: center;}
+	button {background: #0f3460; color: #e0e0e0; border: none; border-radius: 0.4em;
+		padding: 0.5vmin 2vmin; font-size: 2vmin; cursor: pointer; margin: 2vmin 0.5vmin;}
+	button:hover { background: #533483; }
+	a {color: #e94560; text-decoration: none; margin-left: 1vmin; font-size: 2vmin;}
+	a:hover { text-decoration: underline; }
+	table {border-collapse: collapse; width: 95vmin; height: 0vmin; font-size: 2vmin; table-layout: fixed;}
+	td {border: 0.1vmin solid #0f3460; cursor: pointer; position: relative; background: #16213e;
+		color: #ccc; overflow: hidden; user-select: none; width: var(--size); height: var(--size);}
+	td:hover {background: #1a1a40;}
+	td.marked::after {content: '\2718'; position: absolute; top: 50%; left: 50%;
+		transform: translate(calc(-50% + var(--rx, 0px)), calc(-50% + var(--ry, 0px))) rotate(var(--rr, 0deg));
+		font-size: 15vmin; color: #e94560; opacity: 0.85; font-weight: bold;}
+	table.win td {background: #1b4332; border-color: #2d6a4f;}
+	.line {position: absolute; top: 0; left: 0; height: 95vmin; z-index: 1;
+		background: darkgoldenrod; opacity: .6; border-radius: 50%; pointer-events: none;}
+	#viewWrap {width: 95vmin; height: 95vmin; overflow: hidden; border: 0.1vmin solid #0f3460;
+		border-radius: 0.5em; display: none;}
+	#view {width: 135.714vmin; height: 190vmin; transform: scale(0.7); transform-origin: top left; border: none;}
+</style>
+</head>
+<body> 
+	<textarea id=vals placeholder='Each line is a new entry use " | " to indicate hover'></textarea><br>
+	<div style="display:inline-flex; align-items: center; gap: 1vmin;">
+		<select onclick=mode(this) id=sss>
+			<option>wikiHow</option>
+			<option>wikipedia</option>
+			<option>Fandom</option>
+			<option>Minecraft</option>
+			<option>Custom</option>
+		</select>
+		<input type=text id=comm value=terraria>
+		<input type=number id=bSize min=5 max=10 value=5>
+		<button onclick=generateBoard()>Generate Board</button>
+		<a id=link href='https://www.wikihow.com/Special:Randomizer' target=_blank>Random wiki page</a>
+	</div>
+	<br>
+	<div id=sbs style="display:inline-flex; gap: 1vmin; flex-wrap: wrap; justify-content: center;">
+		<div id=viewWrap>
+			<input type=range id=zoom min=30 max=100 value=64>
+			<button id=rando>Randomize</button>
+			<iframe id=view></iframe>
+		</div><br>
+		<div id=boardWrap style="position: relative;"><table id=board></table></div>
+	</div>
+</body>
+<script>
+	let wikiHow = [
+		'No How in Title | There is no How in the title',
+		'Relationship Advice | The article has anything about relationships (family or love)',
+		'Low View Count | Has less than 50,000 views',
+		'High View Count | Has more than 500,000 views',
+		'Recently Revised | The article was edited in the last month',
+		'WikiHUH? | The title makes you do a double take',
+		'r/DiWHY | This belongs in the subreddit r/DiWHY',
+		'r/oddlyspecific | The article/title is very specific',
+		'Sadge | The article is about something sad',
+		'Copium | The article is about coping with anything',
+		'Totes Cringe | The article is about something cringey',
+		'Actually helpful | The article is actually helpful and informative',
+		'Clickbait Title | The title is very clickbaity or gives the wrong impression',
+		'Overly Complicated | The article makes a simple task seem very complicated',
+		'Underly Complicated | The article makes a very complicated task seem simple',
+		'Unnecessary Steps | There are far too many steps for what it is',
+		'Useless Article | The article does not need to exist',
+		'Zealot | Article is religious in some way (angels included)',
+		'Ghostly | Article involves ghosts or spirits in some way',
+		'Astronomy | Article mentions something about planets',
+		'Astrology | Article mentions something planetary influence on people or events',
+		'Star Signs | Article mentions horoscopes or zodiac signs',
+		'WITCH | Article mentions about witchcraft or magic',
+		'Oooh Spooky | The article is about the occult',
+		'xX_GAMERS_Xx | The article is something about video games',
+		'Technical Support | Article is related to technology or technical support in some way',
+		'TechiHow | The article loads into the blue pages',
+		'LoviHow | The article loads into the pink pages',
+		'Self Help | Improving yourself in some way',
+		'Beauty Care | Something about beauty or makeup',
+		'Fashionista | Something about fashion or style',
+		'We Have Clothes at Home | Article is about making or mending clothes',
+		'Medical Advice | Something about medical expertise, no matter how bad it is',
+		'Fitness Frenzy | An article entirely about one specific exercise',
+		'Biggest Loser | An article about losing weight',
+		'Food Prep | Something about cooking or preparing food',
+		'Recipes | The article is just a recipe',
+		'Seen it before | The article has already appeared this round',
+		'Animal Article | The article is about any animal or pet care',
+		'Plant Article | The article is about any plant or farming',
+		'Violence is the Answer | Article is about fighting or attacking in some way',
+		'The Numbers Mason! | The title is something like "10 ways to..." or "5 reasons why..."',
+		'Fact Checked? | How was the article possibly fact checked? It seems impossible',
+		'Approved Article | Somehow the article was marked as approved given the title and content',
+		'Article is Tested | Good luck, this one is extremely rare',
+		'Gambling | The article has anything about gambling or betting',
+		'Money Money Money | The article is about making or saving money',
+		'Big Business | The article is about business or corporate stuff',
+		'Study NERD! | The article is about school or studying',
+		'Don\'t Do This | You should not do the thing in the article, it is dangerous or just a bad idea',
+		'Makeshift Author Position | The authors work history is mumbo jumbo, like "pickleball expert"',
+		'Many Authors | At least 15 author/coauthors',
+		'Hair Care | The article is about hair care or styling',
+		'Car Care | The article is about car maintenance or driving',
+		'Home Improvement | The article is about improving or maintaining your home',
+		'Crafting | The article is about making or repairing something, not including digital work',
+		'Writing | The article is about writing or publishing something',
+		'Money Saving | The article is about saving money in some way',
+		'Life Hack | The article is about a "life hack" of some kind, but is useless',
+		'Lucky Charms | The article is about something lucky or superstitious in some way',
+		'Awww | Something cute or heartwarming',
+		'Co-workers, Amirite? | Articles is about dealing with co-workers in some way',
+		'Commentless | There are no Q&A comments',
+		'Tips and Tricks | There is at least 3 tips',
+		'Multilingaul | Article is about learning a non-English language or phrase',
+		'Leave it to the Pros | The article is about doing something you should have hired a professional for',
+		'Better call HR | The subject is something that might end up with a call to HR',
+		'Better call IT | The subject is something that should be a call to IT',
+		'Needlessly Gendered | For no reason the article specifies it is just for a man/woman',
+		'I Need an Adult | A child should not view this article',
+		'I Need a Doctor | Medical issue that should be handled by a doctor',
+		'I Need a Lawyer | Legal issue that should be handled by a lawyer',
+		'I need a Mechanic | Car issue that should be handled by a mechanic',
+		'I Need a Dictionary | Need to look up a word to understand the article',
+		'What the FAQ? | The article makes you have to read the comments',
+		'ZZZ | Article is boring enough to put you to sleep',
+		'How Did We Get Here? | The article is about something that makes you question society',
+		'Just Google It | A simple Google search would have been faster',
+		'pr0n | The article is about something NSFW in any way',
+		'Meme Ready Template | Any of the pictures could be used as for a meme template',
+		'Personless Pictures | No person, or part of person, in ALL the pictures',
+		'Arrows in Pictures | There are unnecessary arrows in the pictures pointing at things',
+		'Gif or Jif | It\'s gif. The pictures are animated',
+		'Not the Bees! | The article is about something gross or disturbing',
+		'Who is this for? | Genuinely cannot tell who the target audience is',
+		'Ooh look, a quiz! | The suggested quizzes on the side are intriguing',
+		'That was helpful | Article is voted 100% helpful by viewers',
+		'Title = Title | The webpage title is EXACTLY the same as the article title',
+		'Money Money Money | Article is about making in anyway',
+		'LUL Comment | The top comment is funny or satire',
+		'2020 Vision | This would have been helpful, but not anymore',
+		'Look in the Mirror | Maybe you are the problem the article is trying to solve',
+		'You Should Know | There is a "Things You Should Know" section before the article',
+		'Subtitled | A gray subtitle below the main title',
+		'Video Included | A full video tutorial is provided after the article',
+		'Sectionless | The article is one long block with no sections or steps',
+		'Steps for Days | Article has at least 10 steps in one section',
+		'TLDR | Article is too long and not worth reading',
+		'Nostalgia Bait | Article is about something nostalgic to get clicks',
+		'This Can\'t be Real | The article is about something that seems unbelievable or fake',
+		'Oh No! | Viewcount is rather high given the vibe of the article (eg "How to bury a pet")',
+		'Wholesome | The article is about something wholesome, good, or pure (eg "Learning sign language")',
+		'AI Article | At least 50% of the article was written by AI, use website to validate',
+		'AI Image | Any image on the page was generated by AI, use website to validate',
+		'Out of Kontext | The title could be embarrassing if someone saw you reading it'
+	];
+	let wikipedia = [
+		'Dead or Alive | The person from the article is pronounced dead',
+		'Name Drop | Artilce is about a name, not a person, just the name',
+		'Athlete | Article is about a famous athlete (minor leagues and up)',
+		'Sports Team | Article is about any sports team',
+		'Coach | Article is about a famous coach or manager of a sports team',
+		'Little League | Article is about a minor sporting event or competition',
+		'Big Times | Article is about a major sporting/championship event or competition (excluding the Olympics)',
+		'Olympians | Article is about the Olympics or an event from it',
+		'Award Winner | Article is about a person who won a major award (eg Nobel, Oscar, Pulitzer, etc.)',
+		'The Award | Article is about the award itself, not the person who won it',
+		'Singer Songwriter | Article is about a famous musician (no soundcloud rappers)',
+		'Congress | Artile is about a group of governing people or political party',
+		'Politician | Article is about any politian',
+		'Election Results | Article is about the any election',
+		'Zealot | Article is about any religous figure or worshipper',
+		'Artist | Article is about a famous artist in any medium (excluding music)',
+		'Author | Article is about any well known author/poet',
+		'Geniuses | Article is about a significant indidual in any STEM field',
+		'Entertainer | Article is about any hollywood type celebrity or content creator',
+		'Fictional Character | Article is about a made up person/character',
+		'Boy Band | Artile is about a group of singers/musicians making a band',
+		'War Vet | Article is about a person who served in the military',
+		'Army Men | Article is about a squadron of military personell or their equipment',
+		'Bookworm | Article is about a book/novel/writing (non religious)',
+		'Musical | Article is about a song, album, or muscial play (not movie)',
+		'As seen on TV | Article is about a television program or advertisement',
+		'In Theatres now | Article is about a movie/film/screening that was in cinemas',
+		'Radiowaves | Article is about the radio or a station',
+		'Gamers| Article is about any sort of game, physical or digital',
+		'Religions | Anything about any religion',
+		'Celebrations | Anything about any holiday or celebration',
+		'Bugs | Article is about any bug/insect (Class: Insecta)',
+		'Fungi | Article is about any fungus (Kingdom: Fungi)',
+		'Fishies | Article is about an aquatic organism',
+		'Animals | Article is about any animal (Class: Mammallia)',
+		'Plants | Article is about any plant (Kingdom: Plantae)',
+		'Ancient | The article is about something pre medieval (500AD)',
+		'Middle Ages | The article is about something from 500-1900 AD',
+		'Golden Days | The article is about something from the 20th century',
+		'Modern | The artile is about something from the 21st century',
+		'Trainsportation | Artile is about any form of transport (boat, train, auto, plane)',
+		'Industial Revolution | Anything about heavy machines that do large tasks',
+		'Computers | Articles focuses on anything that has to do with computers/programming',
+		'WWW | Article is about the internet or a website',
+		'Business | Article focuses on a business or company',
+		'Corperation | Article is about a company that has more than $1 billion in assets',
+		'Funny Coordinates | The coordinates of a place have a 67 or 69 in them',
+		'Directions Please | The article includes a streetmap view',
+		'Landmarks | Any manmade location that is not a place of living/learning/business',
+		'Education Location | Any place meant for learning (school, university, library, etc.)',
+		'Village | Any location with less than 10k people',
+		'Settlements | Any location with 10k-100k people',
+		'Metropolitan | Any city that has a population of at least 100k',
+		'Borders | Article is about a specific territory/state/county',
+		'Geography | The article focuses on Earth terrain/features',
+		'Science | The article focuses on any form of science',
+		'Mathmatical | The article focuses on a math formula or theorum',
+		'My Chemical Romance | The article is about an element/mixture/chemical',
+		'World War Cameo | Anywhere on the page it directly mentions WWI or WWII',
+		'Common Ingredient | Egg, milk, wheat, sugar, or salt is mentioned anywhere on the page',
+		'Peasant Food | The article mentions bread, potatoes, or rice anywhere on the page',
+		'Popular Food | A common food enjoyed around the world (eg pizza)',
+		'Forbidden Fruit | The article mentions or is about a fruit',
+		'Foreign Food | A unique dish/delicacy from a specific culture',
+		'Drink Up | Artile is about a non water or alcoholic beverage',
+		'*Hick* | The article is about a type of alcohol',
+		'Multilingual | Article is available in 20 or more other languages',
+		'Translation Request | The article states that it needs something translated',
+		'Unverified | The article is listed as needing verification',
+		'Overcited | The article has 50 or more references/citations',
+		'WikiCommons | There is mention of Wikimedia Commons anywhere on the page',
+		'Don\'t See Also | There is no "See Also" section of the article',
+		'r/oddlyspecific | The title/contents of the article are very specific',
+		'Stub | The article is extremely short with almost no content',
+		'TLDR | The article is very long and not worth reading in its entirerty',
+		'I can\'t read this | Some or part of the article is in a different language',
+		'Interactive Page | Something on the page can be interacted with (eg changing a map view)',
+		'Pictureless | The article contains no pictures anywhere',
+		'&lt;table&gt; | There is a table somewhere in the article',
+		'List of... | Article title says that it is a list',
+		'NSFW | Contents of the article could be risky if read at work',
+		'Actually Interesting | Subject of article is worth looking more into (beyond the article itself)',
+		'Ooh Interesting | Something from the article is worth remembering (like a trivia fact)',
+		'Quoted | The article has a quote from the person it\'s about',
+		'Fancy Letters | There is a non standard english letter on the page (eg é, not Ψ)',
+		'EASA | there Exists an Acronym Somewhere in the Article',
+		'(Clarify) | Title has a clarification in parentheses (eg "Ocean (youth camp)")',
+		'Disambiguous | Article is listed as such to redirect to correct page',
+		'Red Links | There is at least one red (broken) link in the article',
+		'Dead End | A reference is tagged as a dead link',
+		'How to say | There is a pronunciation guide (IPA symbols) near the title',
+		'Categories Galore | The article has 10 or more categories at the bottom',
+		'External Links | There are 25 or more links listed in the article',
+		'Graph or Chart | The article contains a graph, chart, or diagram (not a table)',
+		'Timeline | The article contains a timeline or chronological list of events',
+		'Coat of Arms | A coat of arms, seal, or flag image is displayed anywhere on the page',
+		'Bolded | There are bold words in the body text beyond the first sentence',
+		'Collapsed Section | Part of the article has a collapsible/expandable section',
+		'Hatnote | There is a "For other uses" or "Not to be confused with" note at the top',
+		'Colour Coded | A section or table uses background colours for emphasis',
+		'Link Year | A year (eg 1987) in the article is a clickable blue link',
+		'Leap Year | Subject of article is on a leap year',
+		'National Flags | A flag appears anywhere in the article',
+		'Subsection Overload | There are 5 or more sections',
+		'QXZ | The article contains the letters Q, X, and Z',
+		'WikiProject | The article is listed as part of a WikiProject (eg WikiProject Medicine)',
+		'Gallery | There is a gallery of images in the article',
+		'-thon | Title ends in -thon (eg "Hackathon")',
+		'Italic Title | Title is italicized for any reason (eg translated work)',
+		'Year in Title | The title contains a year (eg "Summer Olympics 2020")',
+		'Rube Goldberg | The article is about a needlessly complicated machine or process'
+	];
+	let fandom = [
+		'Failed Page | The page does not load or says it has been deleted',
+		'Popups | An annoying popup when you start scrolling',
+		'Stub | Article is listed as a "stub"',
+		'WIP | Article has "work in progress" listed somewhere',
+		'Disambiguous | Article is listed as such to redirect to correct page',
+		'Table of Contents | There is a contents table after the intro',
+		'Gallery | There is a gallery of images in the article',
+		'Locked | The article is locked so only certain people can edit (has a lock in corner)',
+		'Multilingual | Article is available in 5 or more other languages',
+		'Referenced | There are 10 or more references listed in the article',
+		'Tips | The article contains a tips section',
+		'Trivia | The article contains a trivia section',
+		'Quotes | There is a quote anywhere in the article',
+		'Video | There is a video/gif automatically playing anywhere in the article',
+		'Pictureless | There are no pictures anywhere in the article',
+		'Extra Short | The article is less than 100 words long',
+		'Character | The article is about a character',
+		'Location | The article is about a location',
+		'Unique | The article is about a unique object',
+		'Comment Heavy | There are more than 20 comments in the article',
+		'AI Content | There is an AI generated image, or a large portion was written by AI',
+		'LUL | The article is funny or satire',
+		'Fan Theory | The article mentions a fan theory',
+		'Collab | The article is about a collaberation with, or has a link to, another fandom',
+		'Unenglished | Some or part of the article is in a different language',
+		'Title (Clarify) | Title has a clarification in parentheses (eg "Parkzer (cat)")',
+		'___pedia | The fandom is renamed to something ending in -pedia (eg "Bandipedia")',
+		'Links for Days | There are 25 or more links listed in the article',
+		'Folded Category | By default one of the categories at the bottom is folded/collapsed',
+		'Fanart | There is fanart anywhere in the article',
+		'&lt;table&gt; | There is a table somewhere in the article',
+		'Story of my Life | The article is way too long and too much detail',
+		'Stylized | The article has a different style from the rest of the fandom',
+		'Rant | The article is more of a rant or opinion piece than an informative article',
+		'QXZ | The article contains the letters Q, X, and Z',
+		'Easter Egg | The article mentions an easter egg or hidden content in the source material',
+		'Behind the Scenes | Article mentions of the creation of or how it works',
+		'Spoiler Warning | The article has a spoiler warning anywhere',
+		'Youtube Famous | Article mentions a popular content creator by name/username',
+		'Is this canon? | The article mentions if something is canon',
+		'This doesn\'t Belong | Article does not belong in the fandom',
+		'Fresh Meat | The article is about something new in the fandom, added in the last year',
+		'Classic | The article is about something that has been in the fandom for at least 5 years'
+	];
+	let minecraft = [
+		'Java Update | Any major update to the java edition',
+		'Snapshot Day | Any snapshot from the java edition',
+		'Notch Updates | The version was made entirely by notch (before Beta 1.2)',
+		'Bedrock Update | Any full release for Bedrock (not legacy or PE)',
+		'Bedrock Preview | Any unofficial release for Bedrock (beta or preview)',
+		'Legacy Console | Any console specific version (not bedrock)',
+		'Pocket Edition | Any update for the original mobile version',
+		'April FOOLS | Article mentions any of the april fools snapshot/feature',
+		'Du Du Du Dungeons | Article is about the Dungeons spinoff',
+		'Absolute Legend | Article is about the Legend spinoff',
+		'Earth to Minecraft? | Article is about the (defunct) Minecraft Earth',
+		'Story Time! | The article is about the (unavailable) Story Mode',
+		'L-L-L-Lava Chicken | Article is about the Minecraft Movie',
+		'Minecraft Manga | Article mentions or is about the manga',
+		'Books | Article is about any official physical book (except the manga)',
+		'Launcher | Any update the launcher itself',
+		'Back to the Basics | Focus of the article is just a tutorial',
+		'Command Prompt | Article is about 1 specific command',
+		'Redstoner | Article is about any common redstone component/build',
+		'Multilingual | Article is available in 5 or more other languages',
+		'Ooh shiny | Article mentions "diamond(s)" anywhere',
+		'Devolpwho? | One of the developers are mentioned by name/unsername',
+		'Educational | Article is anything from the Education edition of bedrock',
+		'Exclusive | The article is listed as an exclusive to java, legacy, or bedrock (exclude education)',
+		'Stub | The aricle is listed as a "stub" or "work in progress"',
+		'Unavailable | The article is listed as a feature that has been removed from the game',
+		'Disambiguous | Article is listed as such to redirect to correct page',
+		'Out of Date | The article states that it needs to be updated',
+		'Call a maid | The article is states that is needs cleaned up to comply with the style guide',
+		'Achievement Get | Article is about, or how to get, an achievement/advancement',
+		'Pictureles | There is no gallery at the bottom of the article',
+		'Mob(iles) | The article is about any mob',
+		'Friendly Entity | Article is about one of the passive mobs (no neutral)',
+		'Volitile Hostile | Article is about any hostile mob (not neutral)',
+		'Neutral | Article is about one of the neutral mobs (attacked when provoked)',
+		'Golem | Article is about any golem mob',
+		'Breedable | The player can breed the mob (excluding villagers)',
+		'Hrrrmmm | Article focuses on a villager',
+		'Waxed Lightly Weathered Cut Copper Stairs | Any item/block more than 25 letters long',
+		'Renewable | Block/Item is listed as "Renewable Yes"',
+		'Unstackable | Block or item cannot be stacked',
+		'Only 16? | Item stack is maxed at 16 (throwables like eggs)',
+		'Weaksauce | The block can be broken and collected without a tool',
+		'Softy | Block hardness is less than 0.5',
+		'Glow in the Dark | Block/Item is listed as "Luminous Yes" for either version',
+		'Semi-Transparent | Block is listed as "Transparent Partial" for either version',
+		'See Through | Block is listed as "Transparent Yes" for either version',
+		'Drown in it! | Block is listed as "Waterloggable Yes" for either version',
+		'Burn Baby | Block is listed as "Flammable Yes" for either version',
+		'Blocky | Article is about any block',
+		'Blast Resistant | Block has a blast resistance of 5 or more',
+		'Insta-mine | Block can be instant mined with efficiency 5 haste 2 with any tool',
+		'Silk Touch | Block/Item requires silk touch to drop as itself (eg ender chest)',
+		'Handy | Article is about any non basic tool (pic, axe, shovel, ...)',
+		'Woody | Article is about any of the wood blocks/tool',
+		'Rocky | Article is about any stone block/item/tool',
+		'Metalurgy | Article is about any metalic block/item/tool',
+		'Crystal Clear | Article is about any gem block/item/tool',
+		'Firey Furnace | Block/Item can be smelted or cooked',
+		'Cut it out | Block can be used in the stonecutter',
+		'Grinds my Gears | Item can be used in a grindstone',
+		'Fruit of the Loom | Item can be used in the loom',
+		'Anvil | Item can be used in an anvil',
+		'Uncraftable | Block/Item has no crafting recipe to make or use in',
+		'Historic | The subject of the article has existed since 2010',
+		'Change up | There are 20 or more updates listed under the history (separate per version)',
+		'Bugrock | The article lists 10 or more unresolved bugs',
+		'World of colour | Any coloured block, dye, or ingredient that makes dye',
+		'Musical | Article is about any song/music from any game',
+		'Why is this here? | Subject of article does not belong on the wiki',
+		'End update? | Article is about anything "End" or "Ender"',
+		'Marketplace | Article is about something on the Bedrock Marketplace',
+		'Skins | A skin/skinpack is listed anywhere on the page',
+		'/effect | Article is about any effect that can applied wih the /effect command',
+		'Potions | Article is about brewing or any potion (not the effect)',
+		'/enchant | Article is about enchanting or any enchantment',
+		'Combat | Article focuses on something that could be used in combat',
+		'Inventory Clutter | The item in the article contributes to the problem',
+		'IDK | Something on the page is listed as ? or unknwon (eg introduced in version ?)',
+		'Technical | Anything relating to the backend of the game (eg debug features)',
+		'Pot | Article is about archeology, sherds, or the pot',
+		'Dedicated Wam | Anything about a server or optimizing the game',
+		'Structured | The article is about any structure',
+		'Upgrades People | Article is about a netherite specific item',
+		'Fun Fact | Ther is a trivia section in the article',
+		'The Flattening | Block/Item was a number prior to the flatenning (1.13)',
+		'Video Help | There is a video video included in the article',
+		'Animated preview | The preview image on the side is animated',
+		'Herobrine | Removed',
+		'Events | Any IRL event or location for the game',
+		'Merch | Article is about any official merchandise product',
+		'Collaberation | Article is about any company that partnered with Mojang/Microsoft',
+		'Vegitation | Article is about any plant/crop (exclude potato april fools)',
+		'Protected Conent | The article is locked so only certain people can edit (has a lock in corner)',
+		'Feautued Content | The article is listed as a featured article (has a nether star in corner)',
+		'Latest Drop | Article is about content from the latest drop (game version)',
+		'Youtube Famous | Article mentions a popular content creator by name/username',
+		'Silence | A block or mob has no Sound section in the article',
+		'Stick | A stick is used in, or a result of, the crafting recipe',
+		'Common | Block/Item is listed as "Rarity [tier] Common"',
+		'Uncommon | Block/Item is listed as "Rarity [tier] Uncommon"',
+		'Rare | Block/Item is listed as "Rarity [tier] Rare"',
+		'Epic | Block/Item is listed as "Rarity [tier] Epic"',
+		'Legendary | Block/Item is listed as "Rarity [tier] Legendary/Unique"'
+	];
+	window.onload = () => {vals.value = wikiHow.join('\r\n');}
+	comm.onchange = () => {
+		if (sss.selectedIndex == 2) view.src = `https://${comm.value}.fandom.com/wiki/Special:Random`;
+		else view.src = comm.value;
+		if (comm.value.includes('https')) {
+			viewWrap.style.display = 'block';
+			rando.onclick = () => {view.src = comm.value;};
+		} else if (comm.value == '') viewWrap.style.display = 'none';
+	}
+	zoom.oninput = () => {
+		view.style.transform='scale('+zoom.value/100+')';
+		view.style.width=view.style.height=(95/(zoom.value/100))+'vmin';
+	}
+	viewWrap.addEventListener('mouseenter', () => document.body.style.overflow = 'hidden');
+	viewWrap.addEventListener('mouseleave', () => document.body.style.overflow = '');
+	function mode(e) {
+		link.style.display = viewWrap.style.display = comm.style.display = 'none';
+		if (e.selectedIndex == 0) {
+			vals.value = wikiHow.join('\r\n');
+			link.style.display = 'block';
+			link.href = 'https://www.wikihow.com/Special:Randomizer';
+		} else if (e.selectedIndex == 1) {
+			vals.value = wikipedia.join('\r\n');
+			viewWrap.style.display = 'block';
+			view.src = 'https://en.wikipedia.org/wiki/Special:Random';
+			rando.onclick = () => {view.src = 'https://en.wikipedia.org/wiki/Special:Random';}
+		} else if (e.selectedIndex == 2) {
+			vals.value = fandom.join('\r\n');
+			viewWrap.style.display = comm.style.display = 'block';
+			view.src = `https://${comm.value}.fandom.com/wiki/Special:Random`;
+			rando.onclick = () => {view.src = `https://${comm.value}.fandom.com/wiki/Special:Random`;}
+		} else if (e.selectedIndex == 3) {
+			vals.value = minecraft.join('\r\n');
+			link.style.display = 'block';
+			link.href = `https://minecraft.wiki/w/Special:BlankPage/random`;
+		} else {vals.value = ''; comm.style.display = 'block';}
+	}
+	let win = [];
+	function generateBoard() {
+		let squares = vals.value.split('\n');
+		if (squares.length < +bSize.value * +bSize.value) {
+			for (let i = squares.length; i < +bSize.value * +bSize.value; i++) {squares.push('Free Space');}
+		}
+		squares.sort(() => Math.random() - 0.5);
+		board.style.height = board.style.width = '95vmin';
+		board.classList.remove('win');
+		document.documentElement.style.setProperty('--size', `${(95-bSize.value)/bSize.value}vmin`);
+		let temp = ''; win = [];
+		for (let i = 0; i < bSize.value; i++) {
+			win.push([]);
+			temp += '<tr>';
+			for (let j = 0; j < bSize.value; j++) {
+				win[i].push(0);
+				temp += `<td id=${i+':'+j} onclick=toggle(this) 
+					title="${(squares[0].split('|')[1]||'').replaceAll('"', '&quot;')}">
+					${squares[0].split('|')[0]}</td>`;
+				squares.shift();
+			}
+			temp += '</tr>';
+		}
+		board.innerHTML = temp;
+		window.scrollTo(0,1000000);
+	}
+	function toggle(e) {
+		if (e.classList.contains('marked')) {
+			e.classList.remove('marked');
+			win[e.id.split(':')[0]][e.id.split(':')[1]] = 0;
+		} else {
+			e.style.setProperty('--rx', (Math.random() * 5 - 2.5) + 'vmin');
+			e.style.setProperty('--ry', (Math.random() * 5 - 2.5) + 'vmin');
+			e.style.setProperty('--rr', (Math.random() * 60 - 30) + 'deg');
+			e.classList.add('marked');
+			win[e.id.split(':')[0]][e.id.split(':')[1]] = 1;
+		}
+		board.classList.remove('win');
+		document.querySelectorAll('.line').forEach(e => e.remove());
+		let d1 = 0, d2 = 0, temp = (95-bSize.value)/bSize.value;
+		for (let i = 0; i < bSize.value; i++) {
+			let rowSum = 0, colSum = 0;
+			for (let j = 0; j < bSize.value; j++) {rowSum += win[i][j]; colSum += win[j][i];}
+			d1 += win[i][i]; d2 += win[i][bSize.value - 1 - i];
+			if (d1 == bSize.value) makeLine('d1');
+			if (d2 == bSize.value) makeLine('d2');
+			if (rowSum == bSize.value) makeLine('row');
+			if (colSum == bSize.value) makeLine('col');
+			function makeLine(e) {
+				board.classList.add('win');
+				let line = document.createElement('div');
+				line.classList.add('line');
+				line.style.width = `${temp/3}vmin`;
+				if (e == 'd1' || e == 'd2') {
+					line.style.transform = `rotate(${(e == 'd1' ? -1 : 1)*45+Math.random()*5-2.5}deg)`;
+					line.style.height = '125vmin';
+					line.style.top = `${47.5 - 63}vmin`;
+					line.style.left = `${47.5 - temp/6}vmin`;
+				} else if (e == 'row') {
+					line.style.transform = `rotate(90deg)`;
+					line.style.height = '95vmin';
+					line.style.top = `${i*(temp+1) + temp/2 - 47.5 + Math.random()*.25-.125}vmin`;
+					line.style.left = `${47.5 - temp/6}vmin`;
+				} else line.style.left = `${i*temp + temp/3 + i + Math.random()*.25-.125}vmin`;
+				boardWrap.appendChild(line);
+			}
+		}
+	}
+</script>

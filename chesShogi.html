@@ -1,809 +1,646 @@
 <!DOCTYPE html>
 <html lang="en">
 <!-- A strange fusion of Chess and Shogi with different game modes
-		Square and Hexagonal boards
-		Standard, Siege, and Unlimited
-		Chess Only, Shogi Only, or Mixed Armies
-		Standard and alternate move set option
-		Optional Fog of War and seeding for randomization
-	Vibe coded with Claude, GPT, and Grok
-	Created by cswert
-	Last modified 24 Oct 2025-->
+	Square and Hexagonal boards
+	Standard, Siege, and Unlimited
+	Chess Only, Shogi Only, or Mixed Armies
+	Standard and alternate move set option
+	Optional Fog of War and seeding for randomization
+Vibe coded with Claude, GPT
+Created by cswert
+TODOs:
+	- Chess pawn two-tile first move and en passant, and attack
+	- Piece directions and alt move set
+	- Piece promotion for pawns and shogi pieces
+	- Drop mechanic for captured pieces from shogi
+	- Win conditions and check/checkmate detection and CPU
+	- Add Isometric Board
+	- Add horse race
+Last modified 17 Mar 2026-->
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset=UTF-8>
+<meta name=viewport content="width=device-width, initial-scale=1.0">
 <title>Chesshogi</title>
 <style>
-	body {
-		display: flex;
-		align-items: stretch;
-		justify-content: center;
-		min-height: 100vh;
-		margin: 0;
-		padding: 0;
-		background: #2c3e50;
-		font-family: Arial, sans-serif;
-		gap: 20px;
-		overflow: hidden;
-		user-select: none;
-	}
-	#gameArea {
-		display: flex;
-		flex: 1;
-		justify-content: center;
-		align-items: center;
-		height: 100vh;
-	}
-	#controls {
-		width: 200px;
-		color: white;
-		display: flex;
-		flex-direction: column;
-		gap: 10px;
-	}
-	#fogToggle, #legendToggle {
-		padding: 10px 20px;
-		font-size: 16px;
-		cursor: pointer;
-		background: #3498db;
-		color: white;
-		border: none;
-		border-radius: 5px;
-		margin: 0 10px;
-	}
+	body {display: flex; justify-content: space-around; align-content: space-between;
+		align-items: center; flex-wrap: wrap; height: 97.5vh; width: 98%; background: #2c3e50;
+		font-family: Arial, sans-serif; gap: 1vmin; user-select: none;}
+	#controls {width: 200px; color: white; display: flex; flex-direction: column; gap: 10px;}
+	#fogToggle, #legendToggle {padding: 10px 20px; font-size: 16px; cursor: pointer;
+		background: #3498db; color: white; border: none; border-radius: 5px;}
 	#fogToggle:hover, #legendToggle:hover {background: #2980b9;}
-	#board {
-		display: grid;
-		grid-template-columns: repeat(16, 50px);
-		grid-template-rows: repeat(16, 50px);
-		gap: 0;
-		border: 3px solid #8b4513;
-		box-shadow: 0 0 20px rgba(0,0,0,0.5);
+	#board {border: 3px solid #8b4513; box-shadow: 0 0 20px rgba(0,0,0,0.5);
+		transition: transform 0.3s ease; width: 95vmin; height: 95vmin; overflow: clip;}
+	.tile {width: 50px; height: 50px; position: absolute; align-content: center; text-align: center;
+		font-size: .8em; cursor: pointer; transition: all 0.2s;}
+	.tile.light {background: #f0d9b5;}
+	.tile.medium {background: #d4a574;}
+	.tile.dark {background: #b58863;}
+	.tile:hover {filter: brightness(1.2);transform: scale(1.1);z-index: 10;}
+	.tile.selected {background: #7fc97f !important;}
+	.tile.fog {background: #34495e !important; font-size: 0; box-shadow: 0px 0px 20px 5px #34495e;
+   		z-index: 1;}
+	.tile.validMove {background: #bedb39 !important;}
+	.tile.fog.validMove {background: #8e9aaf !important; font-size: 0;}
+	.hex {width: 75px; height: 75px; clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%);}
+	.piece {user-select: none; font-weight: bold; text-shadow: 1px 1px 2px rgba(0,0,0,0.7);
 		transition: transform 0.3s ease;
 	}
-	.square {
-		width: 50px;
-		height: 50px;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		font-size: 28px;
-		cursor: pointer;
-		position: relative;
-		transition: background 0.2s;
-	}
-	.square.light {background: #f0d9b5;}
-	.square.dark {background: #b58863;}
-	.square.selected {background: #7fc97f !important;}
-	.square.fogged {background: #34495e !important;}
-	.square.valid-move {background: #bedb39 !important;}
-	.square.fogged.valid-move {background: #8e9aaf !important;}
-	.piece {
-		user-select: none;
-		font-weight: bold;
-		text-shadow: 1px 1px 2px rgba(0,0,0,0.7);
-		transition: transform 0.3s ease;
-	}
-	.enemy {color: #e74c3c;}
-	.player {color: #3498db;}
-	.shogi-piece {
-		font-family: 'Noto Sans CJK', 'Yu Gothic', 'MS Gothic', monospace;
-		font-size: 24px;
-	}
-	.chess-piece {font-size: 32px;}
-	
-	.demo-square {
-		width: 40px;
-		height: 40px;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		font-size: 20px;
-		position: relative;
-	}
-	.demo-square.light {background: #f0d9b5;}
-	.demo-square.dark {background: #b58863;}
-	.demo-square.center {background: #7fc97f !important;}
-	.demo-square.move {background: #bedb39 !important;}
-	.demo-square.attack {background: #ff6b6b !important;}
-	.piece-button {
-		padding: 8px 12px;
-		background: #3498db;
-		color: white;
-		border: none;
-		border-radius: 5px;
-		cursor: pointer;
-		font-size: 16px;
-		margin: 2px;
-	}
-	.piece-button:hover {background: #2980b9;}
-	.piece-button.active { background: #27ae60;}
-	.hexagonTile {
-		width: 45px;
-		height: 55px;
-		position: absolute;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		font-size: 1.8em;
-		cursor: pointer;
-		transition: all 0.2s;
-		clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
-	}
-	.hexagonTile.light {background: #f0d9b5;}
-	.hexagonTile.dark {background: #b58863;}
-	.hexagonTile.medium {background: #d4a574;}
-	.hexagonTile:hover {filter: brightness(1.2);transform: scale(1.1);z-index: 10;}
+	.enemy {color: #e74c3c; font-size: 2.5em;}
+	.player {color: #3498db; font-size: 2.5em;}
+	.pieceButton {background: #3498db; color: white; font-size: 16px; margin: 2px;}
+	.pieceButton:hover {background: #2980b9;}
+	.pieceButton.active { background: #27ae60;}
+	select {width: 63%; margin: 10px 0 10px 0;}
+	button {padding: 8px 12px; border: none; font-weight: bold; border-radius: 5px; cursor: pointer;}
+	#demoBoard {border: 2px solid #666; width: 350px; height: 350px; margin: 20px auto; position: relative;}
+	#legend {position: fixed; width: 100%; height:100%; background: rgba(0,0,0,0.8);
+		z-index: 10; overflow: auto;}
+	.flex {display: flex; flex-wrap: wrap; justify-content: center;}
+	#newGamePanel {background: rgba(0,0,0,0.4); padding: 10px; border-radius: 10px;
+		max-height: 15px; overflow: hidden; transition: max-height 0.25s;}
+	#newGamePanel:hover {max-height: 700px; transition-delay: 0s; transition-duration: 0s;}
+	input[type=text] {width: 63%; padding: 3px; border: none; border-radius: 2px;
+		margin: 10px 0 10px 0;}
+	input[type=checkbox] {margin: 10px 5px;}
+	#legendContent {background: rgba(0,0,0,0.9); color: white; padding: 20px;
+		border-radius: 10px; margin: 20px; justify-self: anchor-center;}
+	#subBoard {transform-origin: 0px 0px; transform: translate(0px, 0px) scale(.5);}
+	.respawn {display: flex; justify-content: space-around; flex-wrap: wrap; flex-direction: row;
+		padding: 5%; align-items: center; font-size: 3vmin; border: groove; border-radius: 10%;
+		background: blue;}
+	.respawn>* {border: inset; width: 32px; height: 32px; border-radius: 50%; background: rgba(0,0,0,.5);}
 </style>
 </head>
 <body>
-<div id="gameArea">
-	<div id="board"></div>
-	<div id="legend" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; overflow: auto;">
-		<div style="position: relative; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center;">
-			<div style="background: rgba(0,0,0,0.9); color: white; padding: 20px; border-radius: 10px; margin: 20px; max-width: 600px;">
-				<h3 style="text-align: center; margin-bottom: 15px;">Piece Movement Demo</h3>
-				<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px;">
-					<div id="pieceSelector" style="display: flex; flex-wrap: wrap; gap: 10px; justify-content: center;">
-					</div>
-				</div>
-				<div id="demoBoard" style="display: grid; grid-template-columns: repeat(7, 40px); grid-template-rows: repeat(7, 40px); gap: 1px; margin: 20px auto; border: 2px solid #666; justify-self: center; width: fit-content;"></div>
-				<div style="text-align: center; margin-top: 15px;">
-					<button id="closeLegend" style="padding: 10px 20px; background: #e74c3c; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold;">Close Legend</button>
-				</div>
+	<div id=board></div>
+	<div id=legend style='display: none;'>
+		<div id=legendContent>
+			<h3 style='text-align: center;'>Piece Movement Demo</h3>
+			<div id=pieceSelector class=flex></div>
+			<div id=demoBoard></div>
+			<div class=flex>
+				<button id=closeLegend style="background: #e74c3c; color: white;">Close Legend</button>
 			</div>
 		</div>
 	</div>
-		<div id="controls">
-			<div style="margin: 15px 0;">
-				<button id="newGameToggle" style="width: 100%; padding: 10px; background: #27ae60; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; font-size: 16px;">⚙️ New Game Setup</button>
-				<div id="newGamePanel" style="display: none; margin-top: 10px; padding: 10px; background: rgba(0,0,0,0.4); border-radius: 5px; font-size: 12px;">
-					<div style="margin-bottom: 8px;">
-						<label style="color: white; font-size: 12px; display: block; margin-bottom: 2px;">Game Mode:</label>
-						<select id="gameModeSelect" style="width: 100%; padding: 2px; font-size: 11px;">
-							<option value="siege">Siege Mode (Surrounded Start)</option>
-							<option value="standard">Standard Mode (Face to Face)</option>
-						</select>
-					</div>
-					<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px;">
-						<label style="color: white; font-size: 12px;">
-							<input type="checkbox" id="fogOfWarCheck" style="margin-right: 3px;"> Fog of War
-						</label>
-					</div>
-					<div style="margin-bottom: 8px;">
-						<label style="color: white; font-size: 12px; display: block; margin-bottom: 2px;">Movement:</label>
-						<select id="moveSystemSelect" style="width: 100%; padding: 2px; font-size: 11px;">
-							<option value="standard">Standard Moves</option>
-							<option value="alternate">Alternate Moves</option>
-						</select>
-					</div>
-					<div style="margin-bottom: 8px;">
-						<label style="color: white; font-size: 12px; display: block; margin-bottom: 2px;">Board Pattern:</label>
-						<select id="boardPatternSelect" style="width: 100%; padding: 2px; font-size: 11px;">
-							<option value="square">Square Board</option>
-							<option value="hexagon">Hexagon Board</option>
-						</select>
-					</div>
-					<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px;">
-						<div>
-							<label style="color: white; font-size: 12px; display: block; margin-bottom: 2px;">Player:</label>
-							<select id="playerArmySelect" style="width: 100%; padding: 2px; font-size: 11px;">
-								<option value="mixed">Mixed</option>
-								<option value="chess">Chess</option>
-								<option value="shogi">Shogi</option>
-							</select>
-						</div>
-						<div>
-							<label style="color: white; font-size: 12px; display: block; margin-bottom: 2px;">Enemy:</label>
-							<select id="enemyArmySelect" style="width: 100%; padding: 2px; font-size: 11px;">
-								<option value="mixed">Mixed</option>
-								<option value="chess">Chess</option>
-								<option value="shogi">Shogi</option>
-							</select>
-						</div>
-					</div>
-					<div style="margin-bottom: 8px;">
-						<label style="color: white; font-size: 12px; display: block; margin-bottom: 2px;">Seed:</label>
-						<input type="text" id="seedInput" placeholder="Optional seed" style="width: 100%; padding: 3px; border: none; border-radius: 2px; font-size: 11px;">
-					</div>
-					<button id="newGameBtn" style="width: 100%; padding: 6px; background: #e67e22; color: white; border: none; border-radius: 3px; cursor: pointer; font-weight: bold; font-size: 12px;">Start New Game</button>
-				</div>
+	<div id=controls>
+		<div id=newGamePanel>
+			Game Mode: <select id=gModeSelect style='width:100%'>
+				<option value=siege>Siege Mode (Surrounded Start)</option>
+				<option value=standard>Standard Mode (Face to Face)</option>
+				<option value=infinite>Unlimited expanding board</option>
+			</select><br>
+			<input type=checkbox id=FoW onclick="fogOps.style.display=FoW.checked ? 'block' : 'none'"> Fog of War<br>
+			<div id=fogOps style='display: none; font-size: x-small;'>
+				Fog View <input type=number id=fogLevel value=2 min=0 max=5><br>
+				Stop <select id=fogStop>
+					<option value=soft>Soft (Enter any adjacent visible tile)</option>
+					<option value=med>Medium (Stops one tile into fog)</option>
+					<option value=hard>Hard (Can't move into fog)</option>
+				</select>
 			</div>
-			<button id="legendToggle" style="width: 100%; padding: 10px; background: #3498db; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; font-size: 16px;">📖 Piece Legend</button>
-			
+			<input type=checkbox id=altMoves> Alt Moves<br>
+			Tiles: <select id=bPat>
+				<option>Square</option>
+				<option>Hexagon</option>
+			</select><br>
+			Player: <select id=pArmy>
+				<option value="mixed">Mixed</option>
+				<option value="chess">Chess</option>
+				<option value="shogi">Shogi</option>
+			</select><br>
+			Enemy: <select id=eArmy>
+				<option>Mixed</option>
+				<option>Chess</option>
+				<option>Shogi</option>
+			</select><br>
+			<input type=checkbox id=cust> Custom Pieces<br>
+			<input type=checkbox id=revive> Revive Pieces<br>
+			Seed: <input type=text id=seedInput placeholder='Optional seed'><br>
+			<button id=newGameBtn style='width: 100%; background: #e67e22; color: white;'
+				onclick="initBoard()">Start New Game</button>
 		</div>
-</div>
+		<button id=legendToggle onclick="initializeLegend()">📖 Piece Legend</button>
+		<div id=pcap class=respawn></div>
+		<div id=ecap class=respawn style='background: red;'></div>
+	</div>
 </body>
 <script>
-	let gameOptions = {
-		fogOfWar: false,
-		playerArmyType: 'mixed',
-		enemyArmyType: 'mixed',
-		moveSystem: 'standard',
-		gameMode: 'siege',
-		boardPattern: 'square',
-		boardSize: 16
-	};
-	let selectedSquare = null, validMoves = [];
+	document.addEventListener('contextmenu', (e) => {e.preventDefault();});
+	let gOps = {FoW: false, pType: 'mixed', eType: 'mixed', moves: 'standard', gMode: 'siege', bPat: 'square', 
+		bSz: [0,20,0,5]}, selected = null, vaild = [], gameState = {}, rng = Math.random(), zoom = [.5,0,0],
+		pCaptured = {}, eCaptured = {};
 
-	function showPieceDemo(pieceType) {
-		let demoBoard = document.getElementById('demoBoard');
-		demoBoard.innerHTML = '';
-		for (let row = 0; row < 7; row++) {
-			for (let col = 0; col < 7; col++) {
-				let square = document.createElement('div');
-				square.className = 'demo-square';
-				square.className += (row + col) % 2 === 0 ? ' light' : ' dark';
-				if (row === 3 && col === 3) {
-					square.classList.add('center');
-					let piece = document.createElement('span');
-					piece.textContent = pieceType.symbol;
-					piece.style.fontWeight = 'bold';
-					piece.style.color = '#2c3e50';
-					square.appendChild(piece);
-				}
-				demoBoard.appendChild(square);
-			}
-		}
-		let centerRow = 3, centerCol = 3;
-		for (let move of pieceType.moves) {
-			let absRow = Math.abs(move[0]);
-			let absCol = Math.abs(move[1]);
-			if (absRow < 10 && absCol < 10) {
-				let newRow = centerRow + move[0];
-				let newCol = centerCol + move[1];
-				if (newRow >= 0 && newRow < 7 && newCol >= 0 && newCol < 7) {
-					let squareIndex = newRow * 7 + newCol;
-					let square = demoBoard.children[squareIndex];
-					square.classList.add('move');
-				}
-			} else {
-				let rowDir = move[0] === 0 ? 0 : move[0] / absRow;
-				let colDir = move[1] === 0 ? 0 : move[1] / absCol;
-				let maxSteps = Math.max(absRow, absCol);
-				for (let i = 1; i <= Math.min(maxSteps, 3); i++) {
-					let newRow = centerRow + rowDir * i;
-					let newCol = centerCol + colDir * i;
-					if (newRow >= 0 && newRow < 7 && newCol >= 0 && newCol < 7) {
-						let squareIndex = newRow * 7 + newCol;
-						let square = demoBoard.children[squareIndex];
-						square.classList.add('move');
-					}
-				}
-			}
-		}
-	}
-	
 	function initializeLegend() {
-		let pieceSelector = document.getElementById('pieceSelector');
-		let closeLegend = document.getElementById('closeLegend');
-		pieceTypes.forEach((pieceType, index) => {
+		legend.style.display = legend.style.display != 'none' ? 'none' : 'block';
+		pieceSelector.innerHTML = '';
+		pieces.forEach((pieceType, index) => {
 			let button = document.createElement('button');
-			button.className = 'piece-button';
-			if (index === 0) button.classList.add('active');
+			button.className = 'pieceButton';
+			if (index == 0) button.classList.add('active');
 			button.innerHTML = `${pieceType.symbol} ${pieceType.name.replace(/_/g, ' ')}`;
 			button.addEventListener('click', () => {
-				pieceSelector.querySelectorAll('.piece-button').forEach(b => b.classList.remove('active'));
+				pieceSelector.querySelectorAll('.pieceButton').forEach(b => b.classList.remove('active'));
 				button.classList.add('active');
 				showPieceDemo(pieceType);
 			});
 			pieceSelector.appendChild(button);
 		});
-		showPieceDemo(pieceTypes[0]);
-		closeLegend.addEventListener('click', () => {
-			document.getElementById('legend').style.display = 'none';
-			legendToggle.innerHTML = '📖 Piece Legend';
-		});
+		showPieceDemo(pieces[0]);
+		closeLegend.addEventListener('click', () => {legend.style.display = 'none';});
 	}
 	
-	let pieceTypes = [
+	function showPieceDemo(pieceType) {
+		let moves = 'hex', piece = pieces.find(p => p.name === pieceType.name);
+		if (gOps.bPat == 'square') {
+			demoBoard.innerHTML = generateBoard([-3,3,-3,3]);
+			demoBoard.children[0].children[24].innerHTML = piece.symbol;
+			demoBoard.children[0].children[24].classList.add('player');
+			moves = gOps.moves == 'std' ? 'moves' : 'alt';
+		} else {
+			demoBoard.innerHTML = generateBoard([-7,7,-2,2]);
+			demoBoard.children[0].children[33].innerHTML = piece.symbol;
+			demoBoard.children[0].children[33].classList.add('player');
+			demoBoard.children[0].style.transform = 'scale(.59) translate(30px, 0px)';
+			demoBoard.children[0].style.transformOrigin = 'left top';
+		}
+		for (let m of piece[moves]) {
+			let sliding = Math.abs(m[0]) > 4 || Math.abs(m[1]) > 4;
+			let rDir = sliding ? (m[0] == 0 ? 0 : m[0] > 0 ? 1 : -1) : m[0];
+			let cDir = sliding ? (m[1] == 0 ? 0 : m[1] > 0 ? 1 : -1) : m[1];
+			for (let i = 1; i <= Math.max(Math.abs(m[0]), Math.abs(m[1])); i++) {
+				let moveTile = demoBoard.querySelector(`.tile[id="${rDir * i}:${cDir * i}"]`);
+				if (moveTile) moveTile.classList.add('validMove');
+				if (!sliding) break;
+			}
+		}
+		demoBoard.children[0].id = 'subDemo';
+	}
+
+	let pieces = [
 		// Chess pieces
-		{
-			name: 'king', symbol: '♔', enemySymbol: '♚',
+		{name: 'king', symbol: '♔', enemySymbol: '♚',
 			moves: [[-1,-1], [-1,0], [-1,1], [0,-1], [0,1], [1,-1], [1,0], [1,1]],
 			alt: [[]],
-			hex: [[]]
-		},
-		{
-			name: 'queen', symbol: '♕', enemySymbol: '♛',
+			hex: [[2,0], [1,1], [0,1], [-1,1], [-2,0], [-1,-1], [1,-1]]},
+		{name: 'queen', symbol: '♕', enemySymbol: '♛',
 			moves: [[-10,-10], [-10,0], [-10,10], [0,-10], [0,10], [10,-10], [10,0], [10,10]],
 			alt: [[]],
-			hex: [[]]
-		},
-		{
-			name: 'rook', symbol: '♖', enemySymbol: '♜',
+			hex: [[8,0], [-8,0], [6,6], [6,-6], [-6,6], [-6,-6], [0,6], [0,-6]]},
+		{name: 'rook', symbol: '♖', enemySymbol: '♜',
 			moves: [[-10,0], [10,0], [0,-10], [0,10]],
 			alt: [[]],
-			hex: [[]]
-		},
-		{
-			name: 'bishop', symbol: '♗', enemySymbol: '♝',
+			hex: [[8,0], [-8,0], [0,6], [0,-6]]},
+		{name: 'bishop', symbol: '♗', enemySymbol: '♝',
 			moves: [[-10,-10], [-10,10], [10,-10], [10,10]],
 			alt: [[]],
-			hex: [[]]
-		},
-		{
-			name: 'knight', symbol: '♘', enemySymbol: '♞',
+			hex: [[6,6], [6,-6], [-6,6], [-6,-6]]},
+		{name: 'knight', symbol: '♘', enemySymbol: '♞',
 			moves: [[-2,-1], [-2,1], [-1,-2], [-1,2], [1,-2], [1,2], [2,-1], [2,1]],
 			alt: [[]],
-			hex: [[]]
-		},
-		{
-			name: 'pawn', symbol: '♙', enemySymbol: '♟',
-			moves: [[-1,0]],
+			hex: [[3,1], [3,-1], [0,2], [-3,1], [-3,-1], [0,-2]]},
+		{name: 'pawn', symbol: '♙', enemySymbol: '♟',
+			moves: [[1,0]],
 			alt: [[]],
-			hex: [[]]
-		},
+			hex: [[2,0]]},
 		// Shogi pieces
-		{
-			name: 'gold_general', symbol: '金', enemySymbol: '金',
-			moves: [[-1,-1], [-1,0], [-1,1], [0,-1], [0,1], [1,0]],
+		{name: 'shogiPawn', symbol: '歩', enemySymbol: '歩',
+			moves: [[1,0]],
 			alt: [[]],
-			hex: [[]]
-		},
-		{
-			name: 'silver_general', symbol: '銀', enemySymbol: '銀',
-			moves: [[-1,-1], [-1,0], [-1,1], [1,-1], [1,1]], 
+			hex: [[2,0]]},
+		{name: 'goldGeneral', symbol: '金', enemySymbol: '金',
+			moves: [[1,-1], [1,0], [1,1], [0,-1], [0,1], [-1,0]],
 			alt: [[]],
-			hex: [[]]
-		},
-		{
-			name: 'lance', symbol: '香', enemySymbol: '香',
-			moves: [[-10,0]],
+			hex: [[1,-1], [2,0], [1,1], [0,-2], [0,2], [-2,0]]},
+		{name: 'silverGeneral', symbol: '銀', enemySymbol: '銀',
+			moves: [[1,-1], [1,0], [1,1], [-1,-1], [-1,1]], 
 			alt: [[]],
-			hex: [[]]
-		},
-		{
-			name: 'dragon_king', symbol: '龍', enemySymbol: '龍',
-			moves: [[-1,-1], [-10,0], [-1,1], [0,-10], [0,10], [1,-1], [10,0], [1,1]],
+			hex: [[1,-1], [2,0], [1,1], [-2,-2], [-2,2]]},
+		{name: 'lance', symbol: '香', enemySymbol: '香',
+			moves: [[10,0]],
 			alt: [[]],
-			hex: [[]]
-		},
-		{
-			name: 'dragon_horse', symbol: '馬', enemySymbol: '馬',
-			moves: [[-10,-10], [-10,0], [-10,10], [0,-10], [0,10], [10,-10], [10,0], [10,10]],
+			hex: [[8,0]]},
+		{name: 'shogiKnight', symbol: '桂', enemySymbol: '桂',
+			moves: [[2,-1], [2,1]],
 			alt: [[]],
-			hex: [[]]
-		},
-		{
-			name: 'promoted_pawn', symbol: 'と', enemySymbol: 'と',
-			moves: [[-1,-1], [-1,0], [-1,1], [0,-1], [0,1], [1,0]],
-			alt: [[]],
-			hex: [[]]
-		},
-		{
-			name: 'shogi_king', symbol: '王', enemySymbol: '玉',
+			hex: [[3,-1], [3,1]]},
+		{name: 'shogiKing', symbol: '王', enemySymbol: '玉',
 			moves: [[-1,-1], [-1,0], [-1,1], [0,-1], [0,1], [1,-1], [1,0], [1,1]],
 			alt: [[]],
-			hex: [[]]
-		},
-		{
-			name: 'shogi_rook', symbol: '飛', enemySymbol: '飛',
+			hex: [[2,0], [1,1], [0,1], [-1,1], [-2,0], [-1,-1], [1,-1]]},
+		{name: 'dragonKing', symbol: '龍', enemySymbol: '龍',
+			moves: [[-1,-1], [-10,0], [-1,1], [0,-10], [0,10], [1,-1], [10,0], [1,1]],
+			alt: [[]],
+			hex: [[8,0], [-8,0], [1,1], [1,-1], [-1,1], [-1,-1], [0,6], [0,-6]]},
+		{name: 'dragonHorse', symbol: '馬', enemySymbol: '馬',
+			moves: [[-10,-10], [-1,0], [-10,10], [0,-1], [0,1], [10,-10], [1,0], [10,10]],
+			alt: [[]],
+			hex: [[2,0], [-2,0], [6,6], [6,-6], [-6,6], [-6,-6], [0,2], [0,-2]]},
+		{name: 'shogiRook', symbol: '飛', enemySymbol: '飛',
 			moves: [[-10,0], [10,0], [0,-10], [0,10]],
 			alt: [[]],
-			hex: [[]]
-		},
-		{
-			name: 'shogi_bishop', symbol: '角', enemySymbol: '角',
+			hex: [[-10,0], [10,0], [0,-10], [0,10]]},
+		{name: 'shogiBishop', symbol: '角', enemySymbol: '角',
 			moves: [[-10,-10], [-10,10], [10,-10], [10,10]],
 			alt: [[]],
-			hex: [[]]
-		},
-		{
-			name: 'promoted_silver', symbol: '全', enemySymbol: '全',
-			moves: [[-1,-1], [-1,0], [-1,1], [0,-1], [0,1], [1,0]],
+			hex: [[6,6], [6,-6], [-6,6], [-6,-6]]},
+		{name: 'promotedPawn', symbol: 'と', enemySymbol: 'と',
+			moves: [[1,-1], [1,0], [1,1], [0,-1], [0,1], [-1,0]],
 			alt: [[]],
-			hex: [[]]
-		},
-		{
-			name: 'promoted_knight', symbol: '圭', enemySymbol: '圭',
-			moves: [[-1,-1], [-1,0], [-1,1], [0,-1], [0,1], [1,0]],
+			hex: [[1,-1], [2,0], [1,1], [0,-2], [0,2], [-2,0]]},
+		{name: 'promotedSilver', symbol: '全', enemySymbol: '全',
+			moves: [[1,-1], [1,0], [1,1], [0,-1], [0,1], [-1,0]],
 			alt: [[]],
-			hex: [[]]
-		},
-		{
-			name: 'promoted_lance', symbol: '杏', enemySymbol: '杏',
-			moves: [[-1,-1], [-1,0], [-1,1], [0,-1], [0,1], [1,0]],
+			hex: [[1,-1], [2,0], [1,1], [0,-2], [0,2], [-2,0]]},
+		{name: 'promotedKnight', symbol: '圭', enemySymbol: '圭',
+			moves: [[1,-1], [1,0], [1,1], [0,-1], [0,1], [-1,0]],
 			alt: [[]],
-			hex: [[]]
-		},
-		{
-			name: 'shogi_knight', symbol: '桂', enemySymbol: '桂',
-			moves: [[-2,-1], [-2,1]],
+			hex: [[1,-1], [2,0], [1,1], [0,-2], [0,2], [-2,0]]},
+		{name: 'promotedLance', symbol: '杏', enemySymbol: '杏',
+			moves: [[1,-1], [1,0], [1,1], [0,-1], [0,1], [-1,0]],
 			alt: [[]],
-			hex: [[]]
-		},
+			hex: [[1,-1], [2,0], [1,1], [0,-2], [0,2], [-2,0]]},
 		// Unique pieces
-		{
-			name: 'ninja', symbol: '✧', enemySymbol: '✦',
+		{name: 'ninja', symbol: '✧', enemySymbol: '✦',
 			moves: [[-1,0], [0,-1], [0,1], [1,0], [-2,-2], [-2,2], [-2,-2], [-2,2], [2,-2], [2,2], [2,-2], [2,2]],
 			alt: [[]],
-			hex: [[]]
-		}
+			hex: [[4,0], [2,-2], [2,2], [-2,-2], [-2,2], [-4,0]]}
 	];
-	
-	let gameState = [];
-	let rng = Math.random; // Default to Math.random
-
-	
-	function seededRandom(seed) {
-		let x = Math.sin(seed) * 10000;
-		return x - Math.floor(x);
-	}
 	
 	function initSeed(seed) {
 		if (seed) {
-			let seedNum = 0;
-			for (let i = 0; i < seed.length; i++) {
-				seedNum += seed.charCodeAt(i);
-			}
-			let counter = 0;
-			rng = () => seededRandom(seedNum + counter++);
-		} else {
-			rng = Math.random;
-		}
+			let seedNum = 0, counter = 0;
+			for (let i = 0; i < seed.length; i++) seedNum += seed.charCodeAt(i);
+			rng = () => {let x = Math.sin(seedNum + counter++) * 10000; return x - Math.floor(x);};
+		} else rng = () => Math.random();
 	}
-	
-	function getArmyPieces(armyType) {
+
+	function getRandArmy(armyType) {
 		let chessPieces = ['queen', 'rook', 'bishop', 'knight', 'pawn'];
-		let shogiPieces = ['gold_general', 'silver_general', 'lance', 'dragon_king', 'dragon_horse', 'promoted_pawn', 'shogi_rook', 'shogi_bishop', 'promoted_silver', 'promoted_knight', 'promoted_lance', 'shogi_knight'];
-		
-		if (armyType === 'chess') return chessPieces;
-		if (armyType === 'shogi') return shogiPieces;
+		let shogiPieces = ['goldGeneral', 'silverGeneral', 'lance', 'dragonKing', 'dragonHorse',
+			'promotedPawn','shogiRook', 'shogiBishop', 'promotedSilver', 'promotedKnight',
+			'promotedLance', 'shogiKnight'];
+		let customPieces = ['ninja'];
+		if (cust.checked) {
+			chessPieces = chessPieces.concat(customPieces);
+			shogiPieces = shogiPieces.concat(customPieces);
+		}
+		if (armyType == 'chess') return chessPieces;
+		if (armyType == 'shogi') return shogiPieces;
 		return [...chessPieces, ...shogiPieces];
 	}
-	
-	function randomChoice(array) {
-		return array[Math.floor(rng() * array.length)];
-	}
-	
-	function generatePlayerArmy() {
-		let availablePieces = getArmyPieces(gameOptions.playerArmyType);
-		let playerSetup = [];
-		let positions = new Set();
-		
-		for (let i = 0; i < 10; i++) {
-			let row, col;
-			do {
-				row = Math.floor(rng() * gameOptions.boardSize);
-				col = Math.floor(rng() * gameOptions.boardSize);
-			} while (positions.has(`${row},${col}`));
-			positions.add(`${row},${col}`);
-			let piece = randomChoice(availablePieces);
-			playerSetup.push([row, col, piece]);
-		}
-		return playerSetup;
-	}
-	
-	function generateEnemyArmy() {
-		let availablePieces = getArmyPieces(gameOptions.enemyArmyType);
-		let enemySetup = [];
-		let positions = new Set();
-		for (let i = 0; i < 10; i++) {
-			let row, col;
-			do {
-				row = Math.floor(rng() * gameOptions.boardSize);
-				col = Math.floor(rng() * gameOptions.boardSize);
-			} while (positions.has(`${row},${col}`));
-			positions.add(`${row},${col}`);
-			let piece = randomChoice(availablePieces);
-			enemySetup.push([row, col, piece]);
-		}
-		return enemySetup;
-	}
-	
+
+	window.onload = () => {initBoard();}
 	function initBoard() {
-		gameState = [];
-		selectedSquare = null;
-		validMoves = [];
-		for (let row = 0; row < gameOptions.boardSize; row++) {
-			gameState[row] = [];
-			for (let col = 0; col < gameOptions.boardSize; col++) {gameState[row][col] = null;}
+		gameState = {}; selected = null; vaild = [];
+		pCaptured = {}; eCaptured = {};
+		pcap.innerHTML = ecap.innerHTML = '';
+		gOps.eType = eArmy.value.toLowerCase();
+		gOps.pType = pArmy.value.toLowerCase();
+		gOps.FoW = FoW.checked;
+		gOps.gMode = gModeSelect.value;
+		gOps.moves = altMoves.checked ? 'alt' : 'std';
+		gOps.bPat = bPat.value.toLowerCase();
+		initSeed(seedInput.value);
+		if (gOps.bPat == 'square') {
+			if (gOps.gMode == 'siege') gOps.bSz = [-7,7,-7,7];
+			else if (gOps.gMode == 'standard') {
+				if (gOps.pType == 'shogi' || gOps.eType == 'shogi') gOps.bSz = [0,8,0,8];
+				else gOps.bSz = [0,7,0,7];
+			}
+			else gOps.bSz = [-2,2,-2,2];
+		} else if (gOps.bPat == 'hexagon') {
+			if (gOps.gMode == 'siege') gOps.bSz = [-17,17,-5,5];
+			else if (gOps.gMode == 'standard') {
+				if (gOps.pType == 'shogi' || gOps.eType == 'shogi') gOps.bSz = [0,20,0,6];
+				else gOps.bSz = [0,20,0,5];
+			}
+			else gOps.bSz = [-3,3,-1,1];
 		}
-		let playerSetup = generatePlayerArmy();
-		for (let setup of playerSetup) {
-			gameState[setup[0]][setup[1]] = { type: setup[2], owner: 'player' };
-		}
-		let enemySetup = generateEnemyArmy();
-		for (let setup of enemySetup) {
-			gameState[setup[0]][setup[1]] = { type: setup[2], owner: 'enemy' };
-		}
+		board.innerHTML = generateBoard(gOps.bSz);
+		updateBoard();
 	}
-	
-	function getVisibleBounds() {
-		let minRow = gameOptions.boardSize, maxRow = -1, minCol = gameOptions.boardSize, maxCol = -1;
-		for (let row = 0; row < gameOptions.boardSize; row++) {
-			for (let col = 0; col < gameOptions.boardSize; col++) {
-				if (!gameOptions.fogOfWar || isVisible(row, col)) {
-					minRow = Math.min(minRow, row);
-					maxRow = Math.max(maxRow, row);
-					minCol = Math.min(minCol, col);
-					maxCol = Math.max(maxCol, col);
+
+	function generateBoard(size) {
+		if (gOps.bPat == 'square') {
+			let tileSz = 50;
+			let temp = `<div id=subBoard>`, wd = 0; ht = 0;
+			for (let r = size[1]; r >= size[0]; r--) {
+				for (let c = size[2]; c <= size[3]; c++) {
+					temp += `<div class="tile ${(r+c) % 2 == 0 ? 'light' : 'dark'}" style="left: ${(c-size[2])*tileSz}px; top: ${(-r+size[1])*tileSz}px;" id=${r}:${c}>${r}:${c}</div>`;
+					if ((c-size[2])*tileSz > wd) wd = (c-size[2])*tileSz;
+					if ((-r+size[1])*tileSz > ht) ht = (-r+size[1])*tileSz;
 				}
 			}
-		}
-		minRow = Math.max(0, minRow - 1);
-		maxRow = Math.min(gameOptions.boardSize - 1, maxRow + 1);
-		minCol = Math.max(0, minCol - 1);
-		maxCol = Math.min(gameOptions.boardSize - 1, maxCol + 1);
-		return { minRow, maxRow, minCol, maxCol };
-	}
-	
-	function updateBoardScale() {
-		let availableWidth = window.innerWidth * 0.5;
-		let availableHeight = window.innerHeight * 0.95;
-		if (!gameOptions.fogOfWar) {
-			let fullBoardWidth = gameOptions.boardSize * 50;
-			let fullBoardHeight = gameOptions.boardSize * 50;
-			let scaleX = availableWidth / fullBoardWidth;
-			let scaleY = availableHeight / fullBoardHeight;
-			let scale = Math.min(scaleX, scaleY);
-			board.style.transform = `scale(${scale})`;
-			return;
-		}
-		let bounds = getVisibleBounds();
-		let visibleWidth = bounds.maxCol - bounds.minCol + 1;
-		let visibleHeight = bounds.maxRow - bounds.minRow + 1;
-		let scaleX = availableWidth / (visibleWidth * 50);
-		let scaleY = availableHeight / (visibleHeight * 50);
-		let scale = Math.min(scaleX, scaleY);
-		board.style.transform = `scale(${scale})`;
-	}
-	
-	function renderBoard() {
-		board.innerHTML = '';
-		for (let row = 0; row < gameOptions.boardSize; row++) {
-			for (let col = 0; col < gameOptions.boardSize; col++) {
-				let square = document.createElement('div');
-				square.className = 'square';
-				square.className += (row + col) % 2 === 0 ? ' light' : ' dark';
-				square.dataset.row = row;
-				square.dataset.col = col;
-				let piece = gameState[row][col];
-				let isSquareVisible = !gameOptions.fogOfWar || isVisible(row, col);
-				if (piece && isSquareVisible) {
-					let pieceType = pieceTypes.find(p => p.name === piece.type);
-					let pieceDiv = document.createElement('span');
-					let isShogiPiece = ['gold_general', 'silver_general', 'lance', 'dragon_king', 'dragon_horse', 'promoted_pawn'].includes(piece.type);
-					let pieceClass = isShogiPiece ? 'shogi-piece' : 'chess-piece';
-					pieceDiv.className = 'piece ' + piece.owner + ' ' + pieceClass;
-					pieceDiv.textContent = piece.owner === 'player' ? pieceType.symbol : pieceType.enemySymbol;
-					square.appendChild(pieceDiv);
-				}
-				if (selectedSquare && selectedSquare.row === row && selectedSquare.col === col) square.classList.add('selected');
-				if (validMoves.some(m => m.row === row && m.col === col)) square.classList.add('valid-move');
-				if (gameOptions.fogOfWar && !isSquareVisible) square.classList.add('fogged');
-				square.addEventListener('click', () => handleSquareClick(row, col));
-				board.appendChild(square);
-			}
-		}
-		updateBoardScale();
-	}
-	
-	function isVisible(row, col) {
-		for (let r = 0; r < gameOptions.boardSize; r++) {
-			for (let c = 0; c < gameOptions.boardSize; c++) {
-				let piece = gameState[r][c];
-				if (piece && piece.owner === 'player') {
-					let distance = Math.max(Math.abs(row - r), Math.abs(col - c));
-					if (distance <= 2) return true;
+			temp += '</div>';
+			temp = temp.replace('Board', `Board style="width: ${wd+tileSz}px; height: ${ht+tileSz}px;"`);
+			return temp;
+		} else {
+			let hexSz = 75;
+			let temp = `<div id=subBoard>`, wd = 0; ht = 0;
+			for (let r = size[1]; r >= size[0]; r--) {
+				for (let c = size[2]; c <= size[3]; c++) {
+					if (r % 2 != 0 && c == 0) continue;
+					let cIndex = (r+size[1]*2) % 3;
+					cIndex = cIndex == 0 ? 'medium' : cIndex == 1 ? 'dark' : 'light';
+					temp += `<div class="tile hex ${cIndex}" style="left: ${(c-size[2])*hexSz*1.5+(r%2!=0 ? hexSz*.75-(c>0?hexSz*1.5:0): 0)}px; top: ${(-r+size[1])*hexSz*.495}px;" id=${r}:${r%2!=0?c*2+(c<0?1:-1):c*2}>${r}:${r%2!=0?c*2+(c<0?1:-1):c*2}</div>`;
+					if ((c-size[2])*hexSz*1.5 > wd) wd = (c-size[2])*hexSz*1.5;
+					if ((-r+size[1])*hexSz*.495 > ht) ht = (-r+size[1])*hexSz*.495;
 				}
 			}
+			temp += '</div>';
+			temp = temp.replace('Board', `Board style="width: ${wd+hexSz}px; height: ${ht+hexSz}px;"`);
+			if (size == gOps.bSz) {gOps.bSz[2] *= 2; gOps.bSz[3] *= 2;}
+			return temp;
 		}
-		return false;
 	}
-	
-	function getValidMoves(row, col) {
-		let piece = gameState[row][col];
-		if (!piece || piece.owner !== 'player') return [];
-		let pieceType = pieceTypes.find(p => p.name === piece.type);
-		let moves = [];
-		let pieceMoves = [...pieceType.moves];
-		for (let move of pieceMoves) {
-			let absRow = Math.abs(move[0]);
-			let absCol = Math.abs(move[1]);
-			if (absRow < 10 && absCol < 10) {
-				let newRow = row + move[0];
-				let newCol = col + move[1];
-				if (isValidPosition(newRow, newCol)) {
-					let target = gameState[newRow][newCol];
-					if (!target || target.owner === 'enemy') moves.push({ row: newRow, col: newCol });
+
+	board.onclick = (e) => {
+		if (!e.target.classList.contains('tile')) return;
+		document.querySelectorAll('.tile').forEach(t => {
+			t.classList.remove('selected');
+			t.classList.remove('validMove');
+		});
+		if (e.target.innerHTML != '' && selected == null) {
+			selected = e.target.id;
+			vaild = getValid(selected, gameState);
+			e.target.classList.add('selected');
+			vaild.forEach(move => {
+				let temp = document.getElementById(move);
+				if (temp) temp.classList.add('validMove');
+			});
+		} else if (vaild.includes(e.target.id)) {
+			let [sRow, sCol] = e.target.id.split(':').map(Number);
+			if (!gameState[sRow]) gameState[sRow] = {};
+			if (!gameState[sRow][sCol]) gameState[sRow][sCol] = {};
+			if (gameState[sRow][sCol].owner) capture(gameState[sRow][sCol]);
+			gameState[sRow][sCol] = gameState[selected.split(':')[0]][selected.split(':')[1]];
+			delete gameState[selected.split(':')[0]][selected.split(':')[1]];
+			updateBoard();
+			selected = null;
+			vaild = [];
+		} else {
+			selected = null;
+			vaild = [];
+		}
+	};
+
+	board.addEventListener('wheel', (e) => {
+		e.preventDefault();
+		if (!board.children[0]) return;
+		if (!subBoard.dataset.panX) {subBoard.dataset.panX = 0; subBoard.dataset.panY = 0;}
+		let prevZoom = zoom[0];
+		zoom[0] *= e.deltaY > 0 ? 0.95 : 1.05;
+		let mouseX = e.clientX - board.getBoundingClientRect().left + board.scrollLeft;
+		let mouseY = e.clientY - board.getBoundingClientRect().top + board.scrollTop;
+		zoom[1]  = mouseX - (mouseX - zoom[1]) * zoom[0] / prevZoom;
+		zoom[2] = mouseY - (mouseY - zoom[2]) * zoom[0] / prevZoom;
+		subBoard.dataset.panX = zoom[1];
+		subBoard.dataset.panY = zoom[2];
+		subBoard.style.transformOrigin = '0 0';
+		subBoard.style.transform = `translate(${zoom[1]}px, ${zoom[2]}px) scale(${zoom[0]})`;
+	});
+
+	board.addEventListener('auxclick', (e) => {
+		e.preventDefault();
+		zoom = [.5,0,0];
+		zoom[0] = (board.clientWidth / subBoard.clientWidth) - .01;
+		zoom[0] = Math.min(zoom[0], (board.clientHeight / subBoard.clientHeight) - .01);
+		zoom[1] = (board.clientWidth - subBoard.clientWidth * zoom[0]) / 2;
+		zoom[2] = (board.clientHeight - subBoard.clientHeight * zoom[0]) / 2;
+		subBoard.style.transform = `translate(${zoom[1]}px, ${zoom[2]}px) scale(${zoom[0]})`;
+	});
+
+	let layouts = { //dir : 0=up, 1=down, 2=left, 3=right
+		square: {
+			standard: {
+				chess: ['0:0 rook', '0:1 knight', '0:2 bishop', '0:3 queen', '0:4 king',
+					'0:5 bishop', '0:6 knight', '0:7 rook', '1:0 pawn', '1:1 pawn', '1:2 pawn',
+					'1:3 pawn', '1:4 pawn', '1:5 pawn', '1:6 pawn', '1:7 pawn'],
+				shogi: ['0:0 lance', '0:1 shogiKnight', '0:2 silverGeneral', '0:3 goldGeneral', '0:4 shogiKing',
+					'0:5 goldGeneral', '0:6 silverGeneral', '0:7 shogiKnight', '0:8 lance', '1:1 shogiRook',
+					'1:7 shogiBishop', '2:0 shogiPawn', '2:1 shogiPawn', '2:2 shogiPawn', '2:3 shogiPawn',
+					'2:4 shogiPawn', '2:5 shogiPawn', '2:6 shogiPawn', '2:7 shogiPawn', '2:8 shogiPawn'],
+				chesshogi: ['0:0 rook', '0:1 knight', '0:2 bishop', '0:3 rook','0:4 king',
+					'0:5 queen', '0:6 bishop', '0:7 knight', '0:8 rook', '1:0 pawn','1:1 pawn',
+					'1:2 pawn', '1:3 pawn', '1:4 pawn', '1:5 pawn', '1:6 pawn', '1:7 pawn', '1:8 pawn']
+			},
+			siege: {
+				chess: ['-2:-2 pawn', '-2:-1 pawn', '-2:0 knight', '-2:1 pawn', '-2:2 pawn',
+					'-1:-2 pawn', '-1:-1 bishop', '-1:0 rook', '-1:1 bishop', '-1:2 pawn', '0:-2 pawn',
+					'0:-1 rook', '0:0 king', '0:1 rook', '0:2 pawn', '1:-2 pawn', '1:-1 bishop', '1:0 queen',
+					'1:1 bishop', '1:2 pawn', '2:-2 pawn', '2:-1 pawn', '2:0 knight', '2:1 pawn', '2:2 pawn'],
+				shogi: ['-2:-2 shogiPawn', '-2:-1 shogiPawn', '-2:0 shogiPawn',
+					'-2:1 shogiPawn', '-2:2 shogiPawn', '-1:-3 shogiPawn', '-1:-2 shogiKnight',
+					'-1:-1 silverGeneral', '-1:0 lance', '-1:1 silverGeneral', '-1:2 shogiKnight',
+					'-1:3 shogiPawn','0:-3 shogiPawn', '0:-2 shogiBishop', '0:-1 shogiBishop',
+					'0:0 shogiKing', '0:1 shogiRook', '0:2 shogiRook', '0:3 shogiPawn', '1:-3 shogiPawn',
+					'1:-2 shogiKnight', '1:-1 goldGeneral', '1:0 lance', '1:1 goldGeneral',
+					'1:2 shogiKnight', '1:3 shogiPawn', '2:-2 shogiPawn', '2:-1 shogiPawn',
+					'2:0 shogiPawn', '2:1 shogiPawn', '2:2 shogiPawn']
+			}
+		},
+		hexagon: {
+			standard: {
+				chess: ['0:0 rook', '0:2 knight', '0:4 king', '0:6 queen', '0:8 bishop',
+					'0:10 rook', '1:1 rook', '1:3 knight', '1:5 pawn', '1:7 bishop', '1:9 rook',
+					'2:0 pawn', '2:2 pawn', '2:4 knight', '2:6 bishop', '2:8 pawn', '2:10 pawn',
+					'3:1 pawn', '3:3 pawn', '3:5 pawn', '3:7 pawn', '3:9 pawn', '4:4 pawn', '4:6 pawn'],
+				shogi: ['0:0 lance', '0:2 silverGeneral', '0:4 goldGeneral', '0:6 shogiKing',
+					'0:8 goldGeneral', '0:10 silverGeneral', '0:12 lance', '1:1 lance', '1:3 shogiKnight',
+					'1:9 shogiKnight', '1:11 lance', '2:2 shogiRook', '2:10 shogiBishop', '3:1 shogiPawn',
+					'3:3 shogiRook', '3:5 shogiPawn', '3:7 shogiPawn', '3:9 shogiBishop', '3:11 shogiPawn',
+					'4:0 shogiPawn', '4:2 shogiPawn', '4:4 shogiPawn', '4:6 shogiPawn', '4:8 shogiPawn',
+					'4:10 shogiPawn', '4:12 shogiPawn', '5:3 shogiPawn', '5:9 shogiPawn'],
+				chesshogi: ['0:0 rook', '0:2 knight', '0:4 bishop', '0:6 king', '0:8 bishop',
+					'0:10 knight', '0:12 rook', '1:1 rook', '1:3 knight', '1:5 bishop', '1:7 queen',
+					'1:9 knight', '1:11 rook', '2:0 pawn', '2:2 knight', '2:4 pawn', '2:6 pawn',
+					'2:8 pawn', '2:10 knight', '2:12 pawn', '3:1 pawn', '3:3 pawn', '3:5 pawn', '3:7 pawn',
+					'3:9 pawn', '3:11 pawn', '4:3 pawn', '4:9 pawn']
+			},
+			siege: {
+				chess: ['-4:0 pawn', '-3:-1 pawn', '-3:1 pawn', '-2:-2 pawn', '-2:0 rook', '-2:2 pawn',
+					'-1:-1 rook', '-1:1 rook', '0:-2 pawn', '0:0 king', '0:2 pawn', '1:-1 bishop', '1:1 bishop',
+					'2:-2 pawn', '2:0 queen', '2:2 bishop', '3:-1 pawn', '3:1 pawn', '4:0 pawn'],
+				shogi: ['-4:0 shogiPawn', '-3:-1 shogiPawn', '-3:1 shogiPawn', '-2:-2 shogiPawn',
+					'-2:0 goldGeneral', '-2:2 shogiPawn', '-1:-3 shogiPawn', '-1:-1 silverGeneral',
+					'-1:1 silverGeneral', '-1:3 shogiPawn', '0:-4 shogiPawn', '0:-2 shogiBishop',
+					'0:0 shogiKing', '0:2 shogiRook', '0:4 shogiPawn', '1:-3 shogiPawn', '1:-1 shogiBishop',
+					'1:1 shogiRook', '1:3 shogiPawn', '2:-2 shogiPawn', '2:0 goldGeneral', '2:2 shogiPawn',
+					'3:-1 shogiPawn', '3:1 shogiPawn', '4:0 shogiPawn']
+			}
+		}
+	};
+
+	async function placePieces() {
+		let mixedLayout = [];
+		let minR = (gOps.gMode != 'standard') ? gOps.bSz[0] : 0;
+		let maxR = (gOps.gMode != 'standard') ? gOps.bSz[1] : (gOps.bPat == 'square'? 1 : 2);
+		for (let i = gOps.bSz[2]; i <= gOps.bSz[3]; i++) {
+			for (let j = minR; j <= maxR; j++) {
+				if (gOps.gMode == 'siege' && j != gOps.bSz[0] && j != gOps.bSz[1] && i != gOps.bSz[2] && i != gOps.bSz[3]) continue;
+				let army = getRandArmy(gOps.gMode != 'infinite' ? 'mixed' : gOps.pType);
+				let tile = document.getElementById(`${j}:${i}`);
+				if (!tile) continue;
+				mixedLayout.push(`${j}:${i} ${army[Math.floor(rng() * army.length)]}`);
+			}
+		}
+		let flag = (gOps.pType == 'shogi' || gOps.eType == 'shogi') && gOps.gMode != 'siege';
+		if (gOps.gMode == 'standard') {
+			if (gOps.bPat == 'square') mixedLayout[8] = `0:4 ${flag ? 'shogiKing' : 'king'}`;
+			else if (gOps.bPat == 'hexagon') mixedLayout[9] = `0:3 ${flag ? 'shogiKing' : 'king'}`;
+		}
+		let pKey = flag && gOps.pType == 'chess' ? 'chesshogi' : gOps.pType;
+		let eKey = flag && gOps.eType == 'chess' ? 'chesshogi' : gOps.eType;
+		if (gOps.gMode == 'infinite') {
+			layArmy(mixedLayout, 'player');
+			setTimeout(() => {
+				board.innerHTML = generateBoard(gOps.bPat == 'hexagon' ? [-10,10,-4,4] : [-6,6,-6,6]);
+				gameState[0][0] = {type: flag ? 'shogiKing' : 'king', owner: 'player'};
+				updateBoard();}, 100);
+		} else {
+			layArmy(layouts[gOps.bPat][gOps.gMode][pKey] || mixedLayout, 'player');
+			layArmy(layouts[gOps.bPat][gOps.gMode][eKey] || mixedLayout, 'enemy');
+		}
+		if (gOps.gMode == 'siege' && gOps.eType == 'mixed' && gOps.pType == 'mixed') {
+			mixedLayout = [];
+			for (let i = -(gOps.bPat=='square'?2:3); i <= (gOps.bPat=='square'?2:3); i++) {
+				for (let j = -2; j <= 2; j++) {
+					if (!document.getElementById(`${i}:${j}`)) continue;
+					if (i == 0 && j == 0) {mixedLayout.push(`0:0 ${Math.random()>.5 ? 'shogiKing' : 'king'}`); continue;}
+					let tile = document.getElementById(`${j}:${i}`);
+					if (!tile) continue;
+					mixedLayout.push(`${i}:${j} ${getRandArmy('mixed')[Math.floor(rng() * getRandArmy('mixed').length)]}`);
 				}
-			} else {
-				let rowDir = move[0] === 0 ? 0 : move[0] / absRow;
-				let colDir = move[1] === 0 ? 0 : move[1] / absCol;
-				let maxSteps = Math.max(absRow, absCol);
-				for (let i = 1; i <= maxSteps; i++) {
-					let newRow = row + rowDir * i;
-					let newCol = col + colDir * i;
-					if (!isValidPosition(newRow, newCol)) break;
-					let target = gameState[newRow][newCol];
-					if (!target) moves.push({ row: newRow, col: newCol });
-					else {
-						if (target.owner === 'enemy') moves.push({ row: newRow, col: newCol });
-						break;
+			}
+			layArmy(mixedLayout, 'player');
+		}
+		
+		function layArmy(layout, owner) {
+			layout.forEach(item => {
+				let [pos, pieceName] = item.split(' ');
+				let [row, col] = pos.split(':').map(Number);
+				if (gOps.gMode == 'standard') {
+					if (owner == 'enemy') {
+						row = gOps.bSz[1] - row + gOps.bSz[0];
+						col = gOps.bSz[3] - col + gOps.bSz[2];
+					} else {
+						row += gOps.bSz[0];
+						col += gOps.bSz[2];
 					}
+					if (!gameState[row]) gameState[row] = {};
+					gameState[row][col] = {type: pieceName, owner};
 				}
-			}
-		}
-		if (gameOptions.fogOfWar) {
-			moves = moves.filter(move => {
-				let isDestinationVisible = isVisible(move.row, move.col);
-				if (isDestinationVisible) return true;
-				for (let dr = -1; dr <= 1; dr++) {
-					for (let dc = -1; dc <= 1; dc++) {
-						if (dr === 0 && dc === 0) continue;
-						let adjRow = move.row + dr;
-						let adjCol = move.col + dc;
-						if (isValidPosition(adjRow, adjCol) && isVisible(adjRow, adjCol)) return true;
-					}
+				else {
+					if (!gameState[row]) gameState[row] = {};
+					gameState[row][col] = {type: pieceName, owner};
 				}
-				return false;
 			});
 		}
-		return moves;
 	}
 	
-	function isValidPosition(row, col) {
-		return row >= 0 && row < gameOptions.boardSize && col >= 0 && col < gameOptions.boardSize;
-	}
-	
-	function handleSquareClick(row, col) {
-		let piece = gameState[row][col];
-		if (selectedSquare) {
-			let isValidMove = validMoves.some(m => m.row === row && m.col === col);
-			if (isValidMove) {
-				gameState[row][col] = gameState[selectedSquare.row][selectedSquare.col];
-				gameState[selectedSquare.row][selectedSquare.col] = null;
-			}
-			selectedSquare = null;
-			validMoves = [];
-			renderBoard();
-		} 
-		else {
-			if (piece && piece.owner === 'player') {
-				selectedSquare = { row, col };
-				validMoves = getValidMoves(row, col);
-				renderBoard();
+	function updateBoard() {
+		if (Object.keys(gameState).length == 0) placePieces();
+		document.querySelectorAll('.tile').forEach(t => {t.innerHTML = t.id; t.classList.remove('player', 'enemy');});
+		if (gOps.FoW) getVisibleBounds();
+		for (let r in gameState) {
+			for (let c in gameState[r]) {
+				let temp = document.getElementById(`${r}:${c}`);
+				if (temp && gameState[r][c].owner) {
+					temp.innerHTML = pieces.find(p => p.name == gameState[r][c].type).symbol;
+					temp.classList.add(gameState[r][c].owner);
+				}
+				if (gameState[r][c].vis) temp.classList.remove('fog');
+				else if (gOps.FoW) temp.classList.add('fog');
 			}
 		}
+		board.dispatchEvent(new Event('auxclick'));
 	}
-	
-	newGameToggle.addEventListener('click', () => {
-		let isVisible = newGamePanel.style.display !== 'none';
-		newGamePanel.style.display = isVisible ? 'none' : 'block';
-		newGameToggle.innerHTML = isVisible ? '⚙️ New Game Setup' : '⚙️ Close Setup';
-	});
-	
-	newGameBtn.addEventListener('click', () => {
-		gameOptions.playerArmyType = playerArmySelect.value;
-		gameOptions.enemyArmyType = enemyArmySelect.value;
-		gameOptions.fogOfWar = fogOfWarCheck.checked;
-		gameOptions.moveSystem = moveSystemSelect.value;
-		gameOptions.gameMode = gameModeSelect.value;
-		gameOptions.boardPattern = boardPatternSelect.value;
-		let seed = seedInput.value.trim();
-		initSeed(seed);
-		setBoardSize(gameOptions.gameMode);
-		initBoard();
-		if (gameOptions.boardPattern === 'hexagon') {
-			board.innerHTML = '';
-			generateBoard();
-		}
-		else renderBoard();
-		newGamePanel.style.display = 'none';
-		newGameToggle.innerHTML = '⚙️ New Game Setup';
-	});
-	
-	legendToggle.addEventListener('click', () => {
-		let isVisible = legend.style.display !== 'none';
-		legend.style.display = isVisible ? 'none' : 'block';
-		legendToggle.innerHTML = isVisible ? '📖 Piece Legend' : '📖 Close Legend';
-	});
-	
-	window.addEventListener('resize', () => {updateBoardScale();});
-	
-	document.addEventListener('contextmenu', (e) => {e.preventDefault();});
-	
-	setBoardSize(gameOptions.gameMode);
-	initBoard();
-	renderBoard();
-	initializeLegend();
 
-	
-	function setBoardSize(mode) {
-		if (mode === 'siege') {
-			gameOptions.boardSize = 16;
-			board.style.gridTemplateColumns = 'repeat(16, 50px)';
-			board.style.gridTemplateRows = 'repeat(16, 50px)';
-		} 
-		else if (mode === 'standard') {
-			let width = 8;
-			if (gameOptions.playerArmyType === 'shogi' && gameOptions.enemyArmyType === 'shogi') return 9;
-			let height = 9;
-			if (gameOptions.playerArmyType === 'chess' && gameOptions.enemyArmyType === 'chess') return 8;
-			
-			gameOptions.boardSize = Math.max(width, height); // Use larger dimension for array size
-			board.style.gridTemplateColumns = `repeat(${width}, 50px)`;
-			board.style.gridTemplateRows = `repeat(${height}, 50px)`;
+	function getValid(e,f) {
+		if (!selected) return [];
+		let [sRow, sCol] = selected.split(':').map(Number);
+		if (!f[sRow] || !f[sRow][sCol]) return [];
+		let piece = f[sRow][sCol];
+		if (!piece || !piece.owner) return [];
+		let moveSet = gOps.moves == 'std' ? pieces.find(p => p.name == piece.type).moves :
+			pieces.find(p => p.name == piece.type).alt;
+		if (gOps.bPat == 'hexagon') moveSet = pieces.find(p => p.name == piece.type).hex;
+		let valid = [];
+		for (let m of moveSet) {
+			let sliding = Math.abs(m[0]) > 4 || Math.abs(m[1]) > 4;
+			let rDir = sliding ? (m[0] == 0 ? 0 : m[0] > 0 ? 1 : -1) : m[0];
+			let cDir = sliding ? (m[1] == 0 ? 0 : m[1] > 0 ? 1 : -1) : m[1];
+			let nRow = sRow + rDir, nCol = sCol + cDir, steps = 0;
+			let maxSteps = Math.max(Math.abs(m[0]), Math.abs(m[1]));
+			while (steps++ < maxSteps && nRow >= gOps.bSz[0] && nRow <= gOps.bSz[1] && 
+				nCol >= gOps.bSz[2] && nCol <= gOps.bSz[3]) {
+				if (f[nRow] && f[nRow][nCol] && f[nRow][nCol].owner == piece.owner) break;
+				if (gOps.FoW && document.getElementById(`${nRow}:${nCol}`) && !f[nRow][nCol].vis) {
+					if (fogStop.value == 'med') sliding = false;
+					let temp = false;
+					let sz = gOps.bPat == 'square' ? 1 : 2;
+					for (let i = -sz; i <= sz; i++) {
+						for (let j = -sz; j <= sz; j++) {
+							if (Math.abs(i) == sz && Math.abs(j) == sz) continue;
+							if (!f[nRow+i] || !f[nRow+i][nCol+j]) continue;
+							if (f[nRow+i][nCol+j].vis) temp = true;
+						}
+					}
+					if (!temp || fogStop.value == 'hard') break;
+				}
+				if (f[nRow] && f[nRow][nCol] && f[nRow][nCol].owner && f[nRow][nCol].owner != piece.owner) sliding = false;
+				valid.push(`${nRow}:${nCol}`);
+				if (!sliding) break;
+				nRow += rDir;
+				nCol += cDir;
+			}
+		}
+		return valid;
+	}
+
+	function getVisibleBounds() {
+		for (let r = gOps.bSz[0]; r <= gOps.bSz[1]; r++) {
+			if (!gameState[r]) gameState[r] = {};
+			for (let c = gOps.bSz[2]; c <= gOps.bSz[3]; c++) {
+				if (!document.getElementById(`${r}:${c}`)) continue;
+				if (!gameState[r][c]) gameState[r][c] = {};
+				gameState[r][c].vis = false;
+			}
+		}
+		for (let r = gOps.bSz[0]; r <= gOps.bSz[1]; r++) {
+			for (let c = gOps.bSz[2]; c <= gOps.bSz[3]; c++) {
+				if (!document.getElementById(`${r}:${c}`) || gameState[r][c].owner != 'player') continue;
+				let ht = ~~(fogLevel.value) + (gOps.bPat == 'square' ? 0 : 1);
+				for (let i = -ht; i <= ht; i++) {
+					for (let j = -fogLevel.value; j <= fogLevel.value; j++) {
+						if (!gameState[r+i] || !gameState[r+i][c+j]) continue;
+						gameState[r+i][c+j].vis = true;
+					}
+				}
+			}
 		}
 	}
 
-	// NEW board generation methods
-	function generateBoard() {
-		let existing = board.querySelector('.boardContainer');
-		if (existing) existing.remove();
-
-		let container = gameOptions.boardPattern === 'hexagon'
-			? generateHexagonBoard(gameOptions.boardSize)
-			: generateSquareBoard(gameOptions.boardSize);
-
-		board.appendChild(container);
-	}
-	
-	// Generate square board (expands from center)
-	function generateSquareBoard(size) {
-		let boardSize = gameOptions.gameMode === 'unlimited' ? 100 : size;
-		let tileSize = 60;
-		let centerOffset = Math.floor(boardSize / 2);
-		let wrapper = document.createElement('div');
-		wrapper.className = 'boardContainer';
-		wrapper.style.width = (boardSize * tileSize) + 'px';
-		wrapper.style.height = (boardSize * tileSize) + 'px';
-		wrapper.style.position = 'relative';
-		for (let row = 0; row < boardSize; row++) {
-			for (let col = 0; col < boardSize; col++) {
-				let tile = document.createElement('div');
-				tile.className = 'squareTile tile';
-				tile.classList.add((row + col) % 2 === 0 ? 'light' : 'dark');
-				let boardX = col - centerOffset;
-				let boardY = row - centerOffset;
-				tile.style.left = (col * tileSize) + 'px';
-				tile.style.top = (row * tileSize) + 'px';
-				tile.dataset.x = boardX;
-				tile.dataset.y = boardY;
-				tile.dataset.col = col;
-				tile.dataset.row = row;
-				tile.addEventListener('click', () => handleTileClick(boardX, boardY));
-				wrapper.appendChild(tile);
-				// boardData[`${boardX},${boardY}`] = {element: tile, piece: null, x: boardX, y: boardY};
+	function capture(e) {
+		if (e.owner != 'player') {
+			if (!pCaptured[e.type]) pCaptured[e.type] = 0;
+			pCaptured[e.type]++;
+			pcap.innerHTML = '';
+			for (let c in pCaptured) {
+				pcap.innerHTML += `<div>${pieces.find(p => p.name == c).symbol}<sub>${pCaptured[c]}</sub></div>`;
+			}
+		} else {
+			if (!eCaptured[e.type]) eCaptured[e.type] = 0;
+			eCaptured[e.type]++;
+			ecap.innerHTML = '';
+			for (let c in eCaptured) {
+				ecap.innerHTML += `<div>${pieces.find(p => p.name == c).symbol}<sub>${eCaptured[c]}</sub></div>`;
 			}
 		}
-		return wrapper;
 	}
-	
-	// Generate hexagonal board (expands from center)
-	function generateHexagonBoard(size) {
-		let radius = gameOptions.gameMode === 'unlimited' ? 100 : size;
-		radius = 10;
-		let hexWidth = 45;
-		let hexHeight = 55;
-		let wrapper = document.createElement('div');
-		wrapper.className = 'boardContainer';
-		wrapper.style.position = 'relative';
-		wrapper.style.minWidth = `${hexWidth * radius}px`;
-		wrapper.style.minHeight = `${hexHeight * radius}px`;
-		for (let q = -radius; q <= radius; q++) {
-			let r1 = Math.max(-radius, -q - radius);
-			let r2 = Math.min(radius, -q + radius);
-			for (let r = r1; r <= r2; r++) {
-				let tile = document.createElement('div');
-				tile.className = 'hexagonTile tile';
-				let colorIndex = (q - r) % 3;
-				if (colorIndex < 0) colorIndex += 3;
-				tile.classList.add(colorIndex === 0 ? 'light' : colorIndex === 1 ? 'dark' : 'medium');
-				let x = hexWidth * (q + r / 2);
-				let y = hexHeight * .85 * r * 0.866;
-				tile.style.left = (400 + x) + 'px';
-				tile.style.top = (400 + y) + 'px';
-				tile.dataset.q = q;
-				tile.dataset.r = r;
-				tile.addEventListener('click', () => handleTileClick(q, r));
-				wrapper.appendChild(tile);
-				// boardData[`${q},${r}`] = {element: tile, piece: null, q: q, r: r};
-			}
-		}
-		return wrapper;
-	}
+
+
 </script>
 </html>
