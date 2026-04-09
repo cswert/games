@@ -7,7 +7,7 @@
 		Hover over square for a description of the condition
 	Vibe coded with Claude
 	Created by cswert
-	Last modified 12 Mar 2026-->
+	Last modified 8 Apr 2026-->
 <head>
 <meta charset=UTF-8>
 <meta name=viewport content='width=device-width, initial-scale=1.0'>
@@ -40,6 +40,7 @@
 	#viewWrap {width: 95vmin; height: 95vmin; overflow: hidden; border: 0.1vmin solid #0f3460;
 		border-radius: 0.5em; display: none;}
 	#view {width: 135.714vmin; height: 190vmin; transform: scale(0.7); transform-origin: top left; border: none;}
+	#sbs {display: inline-flex; gap: 1vmin; flex-wrap: wrap; justify-content: center; align-items: center; width: 100%;}
 </style>
 </head>
 <body> 
@@ -53,12 +54,13 @@
 			<option>Custom</option>
 		</select>
 		<input type=text id=comm value=terraria>
+		<div id=sbsCheck style='display: none;'>Force SbS<input type=checkbox id=forceSbs></div>
 		<input type=number id=bSize min=5 max=10 value=5>
 		<button onclick=generateBoard()>Generate Board</button>
 		<a id=link href='https://www.wikihow.com/Special:Randomizer' target=_blank>Random wiki page</a>
 	</div>
 	<br>
-	<div id=sbs style="display:inline-flex; gap: 1vmin; flex-wrap: wrap; justify-content: center;">
+	<div id=sbs>
 		<div id=viewWrap>
 			<input type=range id=zoom min=30 max=100 value=64>
 			<button id=rando>Randomize</button>
@@ -157,7 +159,6 @@
 		'Ooh look, a quiz! | The suggested quizzes on the side are intriguing',
 		'That was helpful | Article is voted 100% helpful by viewers',
 		'Title = Title | The webpage title is EXACTLY the same as the article title',
-		'Money Money Money | Article is about making in anyway',
 		'LUL Comment | The top comment is funny or satire',
 		'2020 Vision | This would have been helpful, but not anymore',
 		'Look in the Mirror | Maybe you are the problem the article is trying to solve',
@@ -184,6 +185,7 @@
 		'Little League | Article is about a minor sporting event or competition',
 		'Big Times | Article is about a major sporting/championship event or competition (excluding the Olympics)',
 		'Olympians | Article is about the Olympics or an event from it',
+		'Winner\'s Bracket | Article contains a sports bracket system',
 		'Award Winner | Article is about a person who won a major award (eg Nobel, Oscar, Pulitzer, etc.)',
 		'The Award | Article is about the award itself, not the person who won it',
 		'Singer Songwriter | Article is about a famous musician (no soundcloud rappers)',
@@ -315,7 +317,6 @@
 		'Collab | The article is about a collaberation with, or has a link to, another fandom',
 		'Unenglished | Some or part of the article is in a different language',
 		'Title (Clarify) | Title has a clarification in parentheses (eg "Parkzer (cat)")',
-		'___pedia | The fandom is renamed to something ending in -pedia (eg "Bandipedia")',
 		'Links for Days | There are 25 or more links listed in the article',
 		'Folded Category | By default one of the categories at the bottom is folded/collapsed',
 		'Fanart | There is fanart anywhere in the article',
@@ -444,16 +445,28 @@
 		if (sss.selectedIndex == 2) view.src = `https://${comm.value}.fandom.com/wiki/Special:Random`;
 		else view.src = comm.value;
 		if (comm.value.includes('https')) {
-			viewWrap.style.display = 'block';
+			sbsCheck.style.display = viewWrap.style.display = 'block';
 			rando.onclick = () => {view.src = comm.value;};
-		} else if (comm.value == '') viewWrap.style.display = 'none';
+		} else if (comm.value == '') sbsCheck.style.display = viewWrap.style.display = 'none';
 	}
 	zoom.oninput = () => {
 		view.style.transform='scale('+zoom.value/100+')';
 		view.style.width=view.style.height=(95/(zoom.value/100))+'vmin';
 	}
-	viewWrap.addEventListener('mouseenter', () => document.body.style.overflow = 'hidden');
-	viewWrap.addEventListener('mouseleave', () => document.body.style.overflow = '');
+	sbs.addEventListener('mouseenter', () => document.body.style.overflow = 'hidden');
+	sbs.addEventListener('mouseleave', () => document.body.style.overflow = '');
+	forceSbs.addEventListener('change', () => {
+		if (forceSbs.checked) {
+			document.documentElement.style.setProperty('--size', `${(75-bSize.value)/bSize.value}vmin`);
+			board.style.height = board.style.width = '75vmin';
+			sbs.style.flexWrap = 'nowrap';
+		}
+		else {
+			document.documentElement.style.setProperty('--size', `${(95-bSize.value)/bSize.value/2}vmin`);
+			board.style.height = board.style.width = '95vmin';
+			sbs.style.flexWrap = 'wrap';
+		}
+	});
 	function mode(e) {
 		link.style.display = viewWrap.style.display = comm.style.display = 'none';
 		if (e.selectedIndex == 0) {
@@ -462,12 +475,12 @@
 			link.href = 'https://www.wikihow.com/Special:Randomizer';
 		} else if (e.selectedIndex == 1) {
 			vals.value = wikipedia.join('\r\n');
-			viewWrap.style.display = 'block';
+			sbsCheck.style.display = viewWrap.style.display = 'block';
 			view.src = 'https://en.wikipedia.org/wiki/Special:Random';
 			rando.onclick = () => {view.src = 'https://en.wikipedia.org/wiki/Special:Random';}
 		} else if (e.selectedIndex == 2) {
 			vals.value = fandom.join('\r\n');
-			viewWrap.style.display = comm.style.display = 'block';
+			sbsCheck.style.display = viewWrap.style.display = comm.style.display = 'block';
 			view.src = `https://${comm.value}.fandom.com/wiki/Special:Random`;
 			rando.onclick = () => {view.src = `https://${comm.value}.fandom.com/wiki/Special:Random`;}
 		} else if (e.selectedIndex == 3) {

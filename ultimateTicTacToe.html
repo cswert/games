@@ -9,169 +9,95 @@
 		Impossible CPU: Minimax with optimizations
 	Vibe coded with ChatGPT, and Claude
 	Created by cswert
-	Last modified 11 Oct 2025-->
+	Last modified 8 Apr 2026-->
 <html lang="en">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
-	body {
-		font-family: 'Arial', sans-serif;
-		background-color: #1a1a1a;
-		color: #ffffff;
-		display: flex;
-		justify-content: center;
-		align-items: center;
-		user-select: none;
-	}
-	h1 {font-size: 2.5rem;}
-	.board {
-		display: grid;
-		grid-template-columns: repeat(3, 1fr);
-		gap: 10px;
-		margin: 1rem 0 1rem 0;
-		position: relative;
-	}
-	.subBoard {
-		display: grid;
-		grid-template-columns: repeat(3, 1fr);
-		gap: 2px;
-		background-color: #333;
-		padding: 5px;
-		border-radius: 5px;
-		position: relative;
-	}
-	.cell {
-		width: 40px;
-		height: 40px;
-		background-color: #4a4a4a;
-		display: flex;
-		justify-content: center;
-		align-items: center;
-		font-size: 1.5rem;
-		cursor: pointer;
-		transition: background-color 0.3s;
-	}
-	.cell:hover {background-color: #555;}
-	.winner {
-		position: absolute;
-		background-color: rgba(0, 0, 0, 0.8);
-		color: #fff;
-		font-size: 2rem;
-		display: flex;
-		justify-content: center;
-		align-items: center;
-		width: 100%;
-		height: 100%;
-		top: 0;
-		left: 0;
-	}
-	.controls {display: flex; justify-content: center; gap: 10px; margin-top: 1rem;}
-	button, select {
-		padding: 0.5rem 1rem;
-		font-size: 1rem;
-		background-color: #4a4a4a;
-		color: #ffffff;
-		border: none;
-		border-radius: 5px;
-		cursor: pointer;
-		transition: background-color 0.3s;
-	}
+	body {font-family: 'Arial', sans-serif; background-color: #1a1a1a; color: #ffffff; display: flex;
+		justify-content: center; align-items: center; user-select: none; font-size: 3vmin;}
+	.board {display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.1vmin; margin: 1rem 0 1rem 0; position: relative;}
+	.subBoard {display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.2vmin; background-color: #333;
+		padding: 0.5vmin; border-radius: 5px; position: relative;}
+	.cell {width: 6vmin; height: 6vmin; background-color: #4a4a4a; align-content: center; font-size: 1.5vmin;
+		cursor: pointer; transition: background-color 0.3s;}
+	.cell:hover {background-color: #555; scale:1.2;}
+	.filledCell {background-color: #2d2d2d; cursor: default; font-size: 3vmin}
+	.winner {position: absolute; background-color: rgba(0, 0, 0, 0.8); color: #fff; font-size: 3.75vmin;
+		display: flex; justify-content: center; align-items: center; width: 100%; height: 100%; top: 0; left: 0;}
+	.controls {display: flex; flex-direction: column; justify-content: center; gap: 1vmin; margin-top: 1rem;}
+	button, select {padding: 0.1vmin; font-size: 2.5vmin; background-color: #4a4a4a; color: #ffffff;
+		border: none; border-radius: 5px; cursor: pointer; transition: background-color 0.3s;}
 	button:hover, select:hover {background-color: #555;}
-	.activeBoard {box-shadow: 0 0 10px 5px #ffff00;}
-	.activeCell {box-shadow: inset 0 0 0px 2px #ffff00;}
-	.gameContainer {display: flex; flex-direction: row; align-items: center; gap: 20px; justify-content: center;}
-	.numberSelector {display: none; flex-direction: column; gap: 15px; min-width: 60px;}
-	.numberColumn {display: flex; flex-direction: column; gap: 10px; align-items: center;}
-	.playerLabel {font-size: 0.9rem; margin-bottom: 5px; text-align: center;}
-	.numberBtn {
-		width: 50px;
-		height: 50px;
-		font-size: 1.5rem;
-		background-color: #4a4a4a;
-		color: #ffffff;
-		border: 2px solid #666;
-		border-radius: 5px;
-		cursor: pointer;
-		transition: all 0.3s;
-	}
+	.activeBoard {box-shadow: 0 0 1.1vmin 0.6vmin #ffff00;}
+	.activeCell {box-shadow: inset 0 0 0 0.2vmin #ffff00;}
+	.gameContainer {display: flex; flex-direction: row; align-items: center; gap: 2.5vmin; justify-content: center;}
+	.numberColumn {display: flex; flex-direction: column; gap: 1vmin; align-items: center;}
+	.playerLabel {font-size: 3vmin; text-align: center;}
+	.numberBtn {width: 6vmin; height: 6vmin; font-size: 2.25vmin; background-color: #4a4a4a; color: #ffffff;
+		border: 0.2vmin solid #666; border-radius: 5px; cursor: pointer;}
 	.numberBtn:hover {background-color: #555;}
-	.numberBtn.selected {background-color: #666; border-color: #ffff00; box-shadow: 0 0 10px 2px #ffff00;}
-	@media (max-width: 500px) {
-		body {overflow-y: auto; height: auto;}
-		h1 {font-size: 1.5rem;}
-		.gameContainer {gap: 0px; flex-direction: column;}
-		.playerLabel {display: none;}
-		.numberColumn {flex-direction: row; gap: 5px;}
-		.numberBtn {width: 35px; height: 35px; font-size: 1.2rem;}
-		.cell {width: 8vw; height: 8vw; font-size: 1.2rem;}
-		.board {gap: 5px;}
-		.subBoard {gap: 1px; padding: 3px;}
-		.winner {font-size: 1.5rem;}
-		.controls {flex-wrap: wrap; gap: 5px;}	
-		button, select {padding: 0.4rem 0.8rem; font-size: 0.9rem;}
-	}
+	.numberBtn.selected {background-color: #666; border-color: #ffff00; box-shadow: 0 0 1.1vmin 0.2vmin #ffff00;}
 </style>
 <body>
 	<div style="text-align: center;">
-	<h1>Ultimate Tic-Tac-Toe</h1>
-	<div class="gameContainer">
-		<div id="xNumberSelector" class="numberSelector">
-			<div class="numberColumn">
-				<div class="playerLabel">Player X<br>(Evens)</div>
-				<button class="numberBtn" onclick="selectNumber(0, 'X')">0</button>
-				<button class="numberBtn" onclick="selectNumber(2, 'X')">2</button>
-				<button class="numberBtn" onclick="selectNumber(4, 'X')">4</button>
-				<button class="numberBtn" onclick="selectNumber(6, 'X')">6</button>
-				<button class="numberBtn" onclick="selectNumber(8, 'X')">8</button>
+	<div style='font-size: 9vmin;'>Ultimate Tic-Tac-Toe</div>
+	<div class=gameContainer>
+		<div id=xNumberSelector>
+			<div class=numberColumn>
+				<div class=playerLabel>Player X<br>(Evens)</div>
+				<button class=numberBtn onclick="selectNumber(0, 'X')">0</button>
+				<button class=numberBtn onclick="selectNumber(2, 'X')">2</button>
+				<button class=numberBtn onclick="selectNumber(4, 'X')">4</button>
+				<button class=numberBtn onclick="selectNumber(6, 'X')">6</button>
+				<button class=numberBtn onclick="selectNumber(8, 'X')">8</button>
 			</div>
 		</div>
-		<div id="game" class="board"></div>
-		<div id="oNumberSelector" class="numberSelector">
-			<div class="numberColumn">
-				<div class="playerLabel">Player O<br>(Odds)</div>
-				<button class="numberBtn" onclick="selectNumber(1, 'O')">1</button>
-				<button class="numberBtn" onclick="selectNumber(3, 'O')">3</button>
-				<button class="numberBtn" onclick="selectNumber(5, 'O')">5</button>
-				<button class="numberBtn" onclick="selectNumber(7, 'O')">7</button>
-				<button class="numberBtn" onclick="selectNumber(9, 'O')">9</button>
+		<div id=game class=board></div>
+		<div id=oNumberSelector>
+			<div class=numberColumn>
+				<div class=playerLabel>Player O<br>(Odds)</div>
+				<button class=numberBtn onclick="selectNumber(1, 'O')">1</button>
+				<button class=numberBtn onclick="selectNumber(3, 'O')">3</button>
+				<button class=numberBtn onclick="selectNumber(5, 'O')">5</button>
+				<button class=numberBtn onclick="selectNumber(7, 'O')">7</button>
+				<button class=numberBtn onclick="selectNumber(9, 'O')">9</button>
 			</div>
 		</div>
 	</div>
-	<div class="controls" style="flex-direction: column; gap: 0.5rem;">
+	<div class=controls>
 		<div>
-			Player X: <select id="playerX">
-				<option value="Human">Human</option>
-				<option value="Easy">Easy</option>
-				<option value="Medium">Medium</option>
-				<option value="Hard">Hard</option>
-				<option value="Impossible">Impossible</option>
+			Player X: <select id=playerX>
+				<option>Human</option>
+				<option>Easy</option>
+				<option>Medium</option>
+				<option>Hard</option>
+				<option>Impossible</option>
 			</select>
 		</div><div>
-			Player O: <select id="playerO">
-				<option value="Human">Human</option>
-				<option value="Easy">Easy</option>
-				<option value="Medium">Medium</option>
-				<option value="Hard">Hard</option>
-				<option value="Impossible">Impossible</option>
+			Player O: <select id=playerO>
+				<option>Human</option>
+				<option>Easy</option>
+				<option>Medium</option>
+				<option>Hard</option>
+				<option>Impossible</option>
 			</select>
 		</div>
 		<div>
-			Mode: <select id="gameMode" onchange="updateGameMode();">
-				<option value="Normal">Normal</option>
-				<option value="Limited" selected>Limited</option>
-				<option value="Sudoku">Sudoku</option>
+			Mode: <select id=gameMode onchange="updateGameMode();">
+				<option>Normal</option>
+				<option selected>Limited</option>
+				<option>Sudoku</option>
 			</select>
-			<button onclick="resetGame()">Reset</button>
+			<button onclick="resetGame()" style='width: 10vmin;'>Reset</button>
 		</div>
 	</div>
 	</div>
 </body>
 
 <script>
-	let gameArr = [], player = 'X', currentBoard = 0, gameOver = false;
+	let gameArr = [], player = 'X', currentBoard = 0, gameOver = false, selectedNumber = null, sudokuNumbers = {};
 	let lines = [[1, 2, 3], [4, 5, 6], [7, 8, 9], [1, 4, 7], [2, 5, 8], [3, 6, 9], [1, 5, 9], [3, 5, 7]];
-	let selectedNumber = null;
-	let sudokuNumbers = {};
 
 	function createBoard() {
 		game.innerHTML = '';
@@ -183,6 +109,7 @@
 				let cell = document.createElement('div');
 				cell.className = 'cell';
 				cell.id = `${i}-${j}`;
+				cell.innerHTML = String.fromCharCode(64 + i)+j;
 				cell.onclick = () => makeMove(i, j);
 				subBoard.appendChild(cell);
 			}
@@ -192,12 +119,12 @@
 	}
 
 	function updateGameMode() {
-		let display = gameMode.value === 'Sudoku' ? 'flex' : 'none';
+		let display = gameMode.value == 'Sudoku' ? 'flex' : 'none';
 		xNumberSelector.style.display = oNumberSelector.style.display = display;
 	}
 
 	function selectNumber(num, playerType) {
-		if (gameMode.value !== 'Sudoku' || gameOver || playerType !== player) return;
+		if (gameMode.value != 'Sudoku' || gameOver || playerType != player) return;
 		document.querySelectorAll('.numberBtn').forEach(btn => btn.classList.remove('selected'));
 		selectedNumber = num;
 		event.target.classList.add('selected');
@@ -206,14 +133,14 @@
 
 	function highlightValidCells() {
 		document.querySelectorAll('.cell').forEach(cell => {cell.classList.remove('activeCell');});
-		if (selectedNumber === null) return;
+		if (selectedNumber == null) return;
 		for (let board = 1; board <= 9; board++) {
-			if (typeof gameArr[board] !== 'object') continue;
-			let validBoard = currentBoard === 0 || currentBoard === board || 
+			if (typeof gameArr[board] != 'object') continue;
+			let validBoard = currentBoard == 0 || currentBoard == board || 
 				(Array.isArray(currentBoard) && currentBoard.includes(board));
-			if (!validBoard && currentBoard !== 0) continue;
+			if (!validBoard && currentBoard != 0) continue;
 			for (let cell = 1; cell <= 9; cell++) {
-				if (gameArr[board][cell] === null && isValidSudokuMove(board, cell, selectedNumber)) {
+				if (gameArr[board][cell] == null && isValidSudokuMove(board, cell, selectedNumber)) {
 					window[`${board}-${cell}`].classList.add('activeCell');
 				}
 			}
@@ -222,7 +149,7 @@
 
 	function isValidSudokuMove(board, cell, number) {
 		for (let c = 1; c <= 9; c++) {
-			if (sudokuNumbers[`${board}-${c}`] === number) return false;
+			if (sudokuNumbers[`${board}-${c}`] == number) return false;
 		}
 		let boardRow = Math.floor((board - 1) / 3);
 		let boardCol = (board - 1) % 3;
@@ -233,14 +160,14 @@
 		for (let col = 0; col < 9; col++) {
 			let checkBoard = Math.floor(globalRow / 3) * 3 + Math.floor(col / 3) + 1;
 			let checkCell = (globalRow % 3) * 3 + (col % 3) + 1;
-			if (sudokuNumbers[`${checkBoard}-${checkCell}`] === number) {
+			if (sudokuNumbers[`${checkBoard}-${checkCell}`] == number) {
 				return false;
 			}
 		}
 		for (let row = 0; row < 9; row++) {
 			let checkBoard = Math.floor(row / 3) * 3 + Math.floor(globalCol / 3) + 1;
 			let checkCell = (row % 3) * 3 + (globalCol % 3) + 1;
-			if (sudokuNumbers[`${checkBoard}-${checkCell}`] === number) {
+			if (sudokuNumbers[`${checkBoard}-${checkCell}`] == number) {
 				return false;
 			}
 		}
@@ -257,15 +184,15 @@
 		document.querySelectorAll('.numberBtn').forEach(btn => btn.classList.remove('selected'));
 		createBoard();
 		updateGameMode();
-		if (playerX.value !== 'Human' && !gameOver) setTimeout(() => cpuMove(playerX.value), 250);
+		if (playerX.value != 'Human' && !gameOver) setTimeout(() => cpuMove(playerX.value), 250);
 	}
 
 	function makeMove(board, cell, isCPU = false) {
-		let validBoard = currentBoard === 0 || currentBoard === board || (Array.isArray(currentBoard) && currentBoard.includes(board));
-		if (gameOver || !validBoard || gameArr[board][cell] !== null || typeof gameArr[board] === 'string') return;
-		if (!isCPU && (player === 'X' ? playerX.value : playerO.value) !== 'Human') return;
-		if (gameMode.value === 'Sudoku') {
-			if (!isCPU && selectedNumber === null) return;
+		let validBoard = currentBoard == 0 || currentBoard == board || (Array.isArray(currentBoard) && currentBoard.includes(board));
+		if (gameOver || !validBoard || gameArr[board][cell] != null || typeof gameArr[board] == 'string') return;
+		if (!isCPU && (player == 'X' ? playerX.value : playerO.value) != 'Human') return;
+		if (gameMode.value == 'Sudoku') {
+			if (!isCPU && selectedNumber == null) return;
 			let numberToPlace = isCPU ? selectedNumber : selectedNumber;
 			if (!isValidSudokuMove(board, cell, numberToPlace)) return;
 			sudokuNumbers[`${board}-${cell}`] = numberToPlace;
@@ -276,11 +203,12 @@
 			gameArr[board][cell] = player;
 			window[`${board}-${cell}`].textContent = player;
 		}
+		window[`${board}-${cell}`].classList.add('filledCell');
 		if (checkWin(gameArr[board], player)) {
 			gameArr[board] = player;
 			addWinnerOverlay(`board-${board}`, player);
 		}
-		else if (gameArr[board].slice(1).every(cell => cell !== null)) {
+		else if (gameArr[board].slice(1).every(cell => cell != null)) {
 			gameArr[board] = 'D';
 			addWinnerOverlay(`board-${board}`, 'Draw');
 		}
@@ -289,20 +217,20 @@
 			gameOver = true;
 			return;
 		}
-		else if (gameArr.slice(1).every(board => typeof board !== 'object')) {
+		else if (gameArr.slice(1).every(board => typeof board != 'object')) {
 			addWinnerOverlay('game', 'The game is a draw!');
 			gameOver = true;
 			return;
 		}
 
-		player = player === 'X' ? 'O' : 'X';
+		player = player == 'X' ? 'O' : 'X';
 		selectedNumber = null;
 		document.querySelectorAll('.numberBtn').forEach(btn => btn.classList.remove('selected'));
 		
-		if (gameMode.value === 'Limited') {
-			let availableBoards = [1, 2, 3, 4, 5, 6, 7, 8, 9].filter(b => typeof gameArr[b] === 'object');
-			if (typeof gameArr[cell] === 'object') {
-				let rand = Math.random(), otherBoards = availableBoards.filter(b => b !== cell);
+		if (gameMode.value == 'Limited') {
+			let availableBoards = [1, 2, 3, 4, 5, 6, 7, 8, 9].filter(b => typeof gameArr[b] == 'object');
+			if (typeof gameArr[cell] == 'object') {
+				let rand = Math.random(), otherBoards = availableBoards.filter(b => b != cell);
 				if (rand < 0.05) currentBoard = 0;
 				else if (rand < 0.4) currentBoard = cell;
 				else if (rand < 0.60 && otherBoards.length > 0) currentBoard = [cell, otherBoards[Math.floor(Math.random() * otherBoards.length)]];
@@ -316,8 +244,8 @@
 		} 
 		else currentBoard = 0;
 		updateActiveBoard();
-		let nextPlayerType = player === 'X' ? playerX.value : playerO.value;
-		if (nextPlayerType !== 'Human' && !gameOver) setTimeout(() => cpuMove(nextPlayerType), 250);
+		let nextPlayerType = player == 'X' ? playerX.value : playerO.value;
+		if (nextPlayerType != 'Human' && !gameOver) setTimeout(() => cpuMove(nextPlayerType), 250);
 	}
 
 	function addWinnerOverlay(elementId, text) {
@@ -327,21 +255,21 @@
 	function updateActiveBoard() {
 		document.querySelectorAll('.subBoard').forEach(board => {board.classList.remove('activeBoard');});
 		document.querySelectorAll('.cell').forEach(cell => {cell.classList.remove('activeBoard', 'activeCell');});
-		if (gameMode.value === 'Sudoku') {
-			if (selectedNumber !== null) highlightValidCells();
+		if (gameMode.value == 'Sudoku') {
+			if (selectedNumber != null) highlightValidCells();
 			return;
 		}
-		if (gameMode.value === 'Limited') {
+		if (gameMode.value == 'Limited') {
 			document.querySelectorAll('.subBoard').forEach(board => {
 				let boardId = parseInt(board.id.split('-')[1]);
-				let isActive = typeof gameArr[boardId] === 'object' && (currentBoard === 0 || currentBoard === boardId || (Array.isArray(currentBoard) && currentBoard.includes(boardId)));
+				let isActive = typeof gameArr[boardId] == 'object' && (currentBoard == 0 || currentBoard == boardId || (Array.isArray(currentBoard) && currentBoard.includes(boardId)));
 				board.classList.toggle('activeBoard', isActive);
 			});
 		}
 	}
 
 	function checkWin(arr, playerToCheck) {
-		return lines.some(line => line.every(cell => arr[cell] === playerToCheck));
+		return lines.some(line => line.every(cell => arr[cell] == playerToCheck));
 	}
 
 	function cpuMove(difficulty) {
@@ -355,31 +283,31 @@
 	}
 
 	function getAvailableBoards(gameArr, targetBoard = currentBoard) {
-		if (Array.isArray(targetBoard)) return targetBoard.filter(b => typeof gameArr[b] === 'object');
-		return targetBoard !== 0 && typeof gameArr[targetBoard] === 'object' 
-			? [targetBoard] : [1, 2, 3, 4, 5, 6, 7, 8, 9].filter(b => typeof gameArr[b] === 'object');
+		if (Array.isArray(targetBoard)) return targetBoard.filter(b => typeof gameArr[b] == 'object');
+		return targetBoard != 0 && typeof gameArr[targetBoard] == 'object' 
+			? [targetBoard] : [1, 2, 3, 4, 5, 6, 7, 8, 9].filter(b => typeof gameArr[b] == 'object');
 	}
 
 	function getAvailableCells(gameArr, board) {
-		if (gameMode.value === 'Sudoku') {
+		if (gameMode.value == 'Sudoku') {
 			let cells = [];
 			for (let cell = 1; cell <= 9; cell++) {
-				if (gameArr[board][cell] === null) cells.push(cell);
+				if (gameArr[board][cell] == null) cells.push(cell);
 			}
 			return cells;
 		}
-		return gameArr[board].reduce((acc, cell, index) => (index !== 0 && cell === null && acc.push(index), acc), []);
+		return gameArr[board].reduce((acc, cell, index) => (index != 0 && cell == null && acc.push(index), acc), []);
 	}
 
 	function easyMove() {
 		if (gameOver) return null;
 		let availableBoards = getAvailableBoards(gameArr);
-		if (availableBoards.length === 0) return null;
+		if (availableBoards.length == 0) return null;
 		let board = availableBoards[Math.floor(Math.random() * availableBoards.length)];
 		let availableCells = getAvailableCells(gameArr, board);
-		if (availableCells.length === 0) return null;
-		if (gameMode.value === 'Sudoku') {
-			let numbers = player === 'X' ? [0, 2, 4, 6, 8] : [1, 3, 5, 7, 9];
+		if (availableCells.length == 0) return null;
+		if (gameMode.value == 'Sudoku') {
+			let numbers = player == 'X' ? [0, 2, 4, 6, 8] : [1, 3, 5, 7, 9];
 			let attempts = 0;
 			while (attempts < 10000) {
 				let cell = availableCells[Math.floor(Math.random() * availableCells.length)];
@@ -395,9 +323,9 @@
 	}
 
 	function hardMove() {
-		if (gameMode.value === 'Sudoku') {
+		if (gameMode.value == 'Sudoku') {
 			let availableBoards = getAvailableBoards(gameArr);
-			let numbers = player === 'X' ? [0, 2, 4, 6, 8] : [1, 3, 5, 7, 9];
+			let numbers = player == 'X' ? [0, 2, 4, 6, 8] : [1, 3, 5, 7, 9];
 			for (let board of availableBoards) {
 				for (let cell of getAvailableCells(gameArr, board)) {
 					for (let number of numbers) {
@@ -412,8 +340,8 @@
 					}
 				}
 			}
-			let opponentPlayer = player === 'X' ? 'O' : 'X';
-			let opponentNumbers = player === 'X' ? [1, 3, 5, 7, 9] : [0, 2, 4, 6, 8];
+			let opponentPlayer = player == 'X' ? 'O' : 'X';
+			let opponentNumbers = player == 'X' ? [1, 3, 5, 7, 9] : [0, 2, 4, 6, 8];
 			for (let board of availableBoards) {
 				for (let cell of getAvailableCells(gameArr, board)) {
 					for (let oppNum of opponentNumbers) {
@@ -474,8 +402,8 @@
 			if (availableCells.length <= 2) {
 				let xCount = 0, oCount = 0;
 				for (let c = 1; c <= 9; c++) {
-					if (gameArr[board][c] === 'X') xCount++;
-					else if (gameArr[board][c] === 'O') oCount++;
+					if (gameArr[board][c] == 'X') xCount++;
+					else if (gameArr[board][c] == 'O') oCount++;
 				}
 				if (Math.abs(xCount - oCount) <= 1) return false;
 			}
@@ -501,9 +429,9 @@
 	}
 	
 	function impossibleMove() {
-		if (gameMode.value === 'Sudoku') {
+		if (gameMode.value == 'Sudoku') {
 			let availableBoards = getAvailableBoards(gameArr);
-			let numbers = player === 'X' ? [0, 2, 4, 6, 8] : [1, 3, 5, 7, 9];
+			let numbers = player == 'X' ? [0, 2, 4, 6, 8] : [1, 3, 5, 7, 9];
 			let bestMove = null;
 			let bestScore = -Infinity;
 			for (let board of availableBoards) {
@@ -540,16 +468,16 @@
 	}
 	function scoreSudokuMove(board, cell, number) {
 		let score = 0;
-		let tempArr = gameArr.map(b => typeof b === 'object' ? [...b] : b);
+		let tempArr = gameArr.map(b => typeof b == 'object' ? [...b] : b);
 		tempArr[board][cell] = player;
 		if (checkWin(tempArr[board], player)) {
 			score += 1000;
 			tempArr[board] = player;
 			if (checkWin(tempArr, player)) score += 5000;
 		}
-		let opponentPlayer = player === 'X' ? 'O' : 'X';
+		let opponentPlayer = player == 'X' ? 'O' : 'X';
 		for (let c = 1; c <= 9; c++) {
-			if (gameArr[board][c] === null && c !== cell) {
+			if (gameArr[board][c] == null && c != cell) {
 				let testBoard = [...gameArr[board]];
 				testBoard[c] = opponentPlayer;
 				if (checkWin(testBoard, opponentPlayer)) score += 500;
@@ -558,9 +486,9 @@
 		score += [0, 3, 1, 3, 1, 4, 3, 1, 3, 1][cell] * 5 + [0, 4, 2, 2, 2, 5, 2, 2, 2, 4][board] * 10;
 		let remainingMoves = 0;
 		for (let b = 1; b <= 9; b++) {
-			if (typeof gameArr[b] !== 'object') continue;
+			if (typeof gameArr[b] != 'object') continue;
 			for (let c = 1; c <= 9; c++) {
-				if (gameArr[b][c] === null && !(b === board && c === cell)) {
+				if (gameArr[b][c] == null && !(b == board && c == cell)) {
 					let tempSudokuNumbers = { ...sudokuNumbers };
 					tempSudokuNumbers[`${b}-${c}`] = number;
 					if (isValidSudokuMoveWithTemp(b, c, number, tempSudokuNumbers)) remainingMoves++;
@@ -572,7 +500,7 @@
 	
 	function isValidSudokuMoveWithTemp(board, cell, number, tempSudokuNumbers) {
 		for (let c = 1; c <= 9; c++) {
-			if (tempSudokuNumbers[`${board}-${c}`] === number) return false;
+			if (tempSudokuNumbers[`${board}-${c}`] == number) return false;
 		}
 		let boardRow = Math.floor((board - 1) / 3);
 		let boardCol = (board - 1) % 3;
@@ -583,12 +511,12 @@
 		for (let col = 0; col < 9; col++) {
 			let checkBoard = Math.floor(globalRow / 3) * 3 + Math.floor(col / 3) + 1;
 			let checkCell = (globalRow % 3) * 3 + (col % 3) + 1;
-			if (tempSudokuNumbers[`${checkBoard}-${checkCell}`] === number) return false;
+			if (tempSudokuNumbers[`${checkBoard}-${checkCell}`] == number) return false;
 		}
 		for (let row = 0; row < 9; row++) {
 			let checkBoard = Math.floor(row / 3) * 3 + Math.floor(globalCol / 3) + 1;
 			let checkCell = (row % 3) * 3 + (globalCol % 3) + 1;
-			if (tempSudokuNumbers[`${checkBoard}-${checkCell}`] === number) return false;
+			if (tempSudokuNumbers[`${checkBoard}-${checkCell}`] == number) return false;
 		}
 		return true;
 	}
@@ -601,32 +529,32 @@
 		tempBoard[cell] = 'X';
 		if (checkWin(tempBoard, 'X')) score += 500;
 		tempBoard[cell] = 'O';
-		let tempGame = gameArr.map(b => typeof b === 'object' ? [...b] : b);
+		let tempGame = gameArr.map(b => typeof b == 'object' ? [...b] : b);
 		if (checkWin(tempBoard, 'O')) {
 			tempGame[board] = 'O';
 			if (checkWin(tempGame, 'O')) score += 5000;
 		}
 		for (let b = 1; b <= 9; b++) {
-			if (typeof gameArr[b] === 'object') {
+			if (typeof gameArr[b] == 'object') {
 				for (let c = 1; c <= 9; c++) {
-					if (gameArr[b][c] === null) {
+					if (gameArr[b][c] == null) {
 						let testBoard = [...gameArr[b]];
 						testBoard[c] = 'X';
 						if (checkWin(testBoard, 'X')) {
-							tempGame = gameArr.map(bb => typeof bb === 'object' ? [...bb] : bb);
+							tempGame = gameArr.map(bb => typeof bb == 'object' ? [...bb] : bb);
 							tempGame[b] = 'X';
-							if (checkWin(tempGame, 'X')) score += (b === board && c === cell) ? 3000 : 0;
+							if (checkWin(tempGame, 'X')) score += (b == board && c == cell) ? 3000 : 0;
 						}
 					}
 				}
 			}
 		}
-		if (typeof gameArr[board] !== 'string') score += [0, 4, 2, 2, 2, 5, 2, 2, 2, 4][board] * 10;
+		if (typeof gameArr[board] != 'string') score += [0, 4, 2, 2, 2, 5, 2, 2, 2, 4][board] * 10;
 		score += [0, 3, 1, 3, 1, 4, 3, 1, 3, 1][cell] * 5;
-		if (gameMode.value === 'Limited' && typeof gameArr[cell] === 'object') {
+		if (gameMode.value == 'Limited' && typeof gameArr[cell] == 'object') {
 			let opponentWinMoves = 0;
 			for (let c = 1; c <= 9; c++) {
-				if (gameArr[cell][c] === null) {
+				if (gameArr[cell][c] == null) {
 					let testBoard = [...gameArr[cell]];
 					testBoard[c] = 'X';
 					if (checkWin(testBoard, 'X')) opponentWinMoves++;
