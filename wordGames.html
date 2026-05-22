@@ -1,0 +1,735 @@
+<!DOCTYPE html>
+<title>Word Games</title>
+<!-- Originally Two games merged into One, very lazily (planned to use non API dict, but that was slower)
+	Word Ladder
+	-Modify the word one letter at a time 
+	-1 letter can be changed, added, or removed (pluralizing does not count)
+	-VS mode: first to fail or repeat loses
+	-Puzzle: reach end word in fewest steps from a random start
+	-Results checked against dictionary API
+	Word Search
+	-User entered words or from a dictionary
+	-Optional seeded generation (does not apply to dictionary)
+	-Grid can shuffle, rotate, flip, and rearrange letters around
+Created by cswert
+Vibe coded with Claude and Gemini 3
+Last modified 21 May 2026-->
+<html lang=en>
+<head>
+<meta charset=UTF-8 name=viewport content="width=device-width, initial-scale=1.0">
+<style>
+	body {background:#1a1a2e; color:#e0e0e0; font-family:system-ui,sans-serif; display:flex; flex-direction:column; align-items:center; user-select:none; justify-content:center; min-height:100vh; margin:0;}
+	#mainMenu {display:flex; flex-direction:column; gap:3vmin; align-items:center; width:100%;}
+	#ladderApp {display:none; flex-direction:column; align-items:center; max-width:85vmin; width:100%; justify-self:center;}
+	#searchApp {display:none; flex-direction:column; align-items:center; width:100%;}
+	#desc {color:#aaa; font-size:2.8vmin;}
+	#setup, #game, #result, #ladder, #resultLadder, #mirrorRow, .mLadder {display:flex; flex-direction:column; align-items:center; position:relative;}
+	#setupLadder {width:55vmin; position:relative;}
+	.railL, .railR {position:absolute; top:0; bottom:0; width:2vmin; background:#8b4513; pointer-events:none;}
+	.railL {left:0; transform-origin:bottom left; transform:rotate(9deg);}
+	.railR {right:0; transform-origin:bottom right; transform:rotate(-9deg);}
+	.modeRung, .rung, .infoRung {font-weight:bold; border-bottom:0.6vmin solid #8b4513; box-sizing:border-box; text-align:center; text-transform:uppercase; letter-spacing:0.5vmin; position:relative; padding:2.5vmin; color:white;}
+	.modeRung {font-size:3.5vmin; cursor:pointer;}
+	.modeRung:hover, .modeRung.start {color:#4caf50;}
+	.modeRung.back {color:#555; font-size:3vmin;}
+	.modeRung.back:hover {color:#888;}
+	#startInput, #endInput {width:10vmin;}
+	#timerInput, #vowHP, #conHP, #waypointInput {width:8vmin;}
+	.chkLabel {display:flex; align-items:center; gap:0.8vmin; justify-content:center; cursor:pointer; color:white;}
+	#ladderApp input[type=number], #ladderApp input[type=text] {padding:1.5vmin; border-radius:1.5vmin; border:none; background:#16213e; color:white; font-size:3vmin;}
+	#ladderApp input[type=checkbox] {appearance:none; width:6vmin; height:3.2vmin; background:#1a1a2e; border-radius:2vmin; cursor:pointer; border:0.25vmin solid #4caf50; position:relative;}
+	#ladderApp input[type=checkbox]:checked {background:#4caf50;}
+	#ladderApp input[type=checkbox]::before {content:""; position:absolute; width:2.2vmin; height:2.2vmin; background:#fff; border-radius:50%; top:0.25vmin; left:0.5vmin;}
+	#ladderApp input[type=checkbox]:checked::before {left:2.8vmin;}
+	#game {display:none; width:60vmin; height:90vmin; padding:3vmin; gap:1.5vmin;}
+	#infoBar {font-size:3vmin; font-weight:bold; min-height:3vmin; gap:0.5vmin; color:white;}
+	#infoBar, #timerRow {width:100%; display:flex; flex-direction:column; gap:1vmin; align-items:center;}
+	.scNodes {display:flex; flex-wrap:wrap; justify-content:center; gap:1vmin; font-size:2.5vmin; text-transform:uppercase;}
+	.scNode {padding:0.5vmin 1.5vmin; border-radius:1vmin; background:#16213e; color:white;}
+	.scDone {opacity:0.35; text-decoration:line-through;}
+	.scNext {color:#f39c12; border:0.3vmin solid #f39c12;}
+	.scFuture {opacity:0.45;}
+	.scStart {color:#3498db;}
+	#ladder, #resultLadder, .mLadder {flex:1; justify-content:flex-end; overflow:hidden; width:100%;}
+	#ladder {width:100%; max-height:100vmin;}
+	#game.mirror {width:80vmin;}
+	#mirrorRow {display:none; flex:1; width:100%; gap:3vmin; flex-direction:row;}
+	.mLadder.inactive {opacity:0.35;}
+	.mLadderLabel {font-size:2vmin; font-weight:bold; letter-spacing:0.3vmin; padding-bottom:0.5vmin; text-transform:uppercase; opacity:0.7; color:white;}
+	#statusMsg {font-size:2.5vmin; color:#f39c12; min-height:3vmin;}
+	#timerNum {font-size:3.5vmin; font-weight:bold; color:white;}
+	#timerBar {width:100%; height:1.5vmin; background:#333; border-radius:1vmin;}
+	#timerFill {height:100%; background:#4caf50; border-radius:1vmin;}
+	#inputRow {display:flex; gap:2vmin;}
+	#wordIn {font-size:3.5vmin; border:0.5vmin solid #4caf50;}
+	#wordIn.err {border-color:#e74c3c; animation:shake .3s;}
+	@keyframes shake {0%,100%{transform:translateX(0)} 33%{transform:translateX(-1vmin)} 66%{transform:translateX(1vmin)}}
+	#result {display:none; gap:3vmin;}
+	#resultTitle {font-size:4vmin; color:white;}
+	#resultLadder .railL, #resultLadder .railR {transform:none;}
+	#resultLadder .rung {font-size:5vmin; width:100%;}
+	.rungFirst {color:#3498db;}
+	.rungLast {color:#4caf50; margin-bottom:8vmin;}
+	#rotMap {position:fixed; top:0; right:0; width:18vmin; height:100%; display:none; flex-direction:column; padding:0.5vmin; box-sizing:border-box; background:rgba(0,0,0,0.25);}
+	.rw {text-transform:uppercase; min-height:0; display:flex; flex:1; align-items:center; justify-content:center; border-radius:0.3vmin;}
+	.fp, .played {color:#4caf50; background:rgba(76,175,80,0.2);}
+	.corrupt {color:#c084fc; background:rgba(128,0,128,0.25);}
+	.known {color:#888; background:rgba(255,255,255,0.05);}
+	.hcHot {color:#fff; background:rgba(231,76,60,0.6);}
+	.hcWarm {color:#fff; background:rgba(230,126,34,0.5);}
+	.hcMid {color:#fff; background:rgba(241,196,15,0.4);}
+	.hcCool {color:#fff; background:rgba(52,152,219,0.35);}
+	.hcCold {color:#fff; background:rgba(52,73,94,0.5);}
+	#decayAlpha {display:none; flex-wrap:wrap; justify-content:center; gap:0.8vmin;}
+	.ltile {font-size:2vmin; font-weight:bold; width:5vmin; height:5.5vmin; display:flex; align-items:center; justify-content:center; border-radius:1vmin; text-transform:uppercase;}
+	.gameTitle {font-size:9vmin; color:#4caf50; text-shadow:0 0 1.5vmin #4caf50; font-weight:900;}
+	#setupArea {display:flex; flex-direction:column; gap:2vmin; background:#16213e; padding:3vmin; border-radius:3vmin; box-shadow:0 2vmin 5vmin rgba(0,0,0,0.6); width:90%; max-width:60vmin; border:0.1vmin solid #4caf5022;}
+	#wordInput {width:100%; height:12vmin; background:#0f3460; color:white; border:0.2vmin solid #4caf50; border-radius:1.5vmin; padding:1.5vmin; resize:none; box-sizing:border-box; font-size:2vmin; outline:none; transition:0.3s;}
+	#wordInput:focus {border-color:#81c784; box-shadow:0 0 1.5vmin #4caf5044;}
+	#gameContainer {display:none; flex-direction:row; gap:4vmin; padding:2vmin; align-items:flex-start; position:relative;}
+	#wordBoard {display:grid; background:#16213e; padding:1vmin; border-radius:1vmin; transition:transform 0.5s, opacity 0.3s; width:82vmin; height:82vmin;}
+	.gridCell {display:flex; align-items:center; justify-content:center; font-size:3vmin; font-weight:bold; cursor:pointer; border-radius:0.5vmin; transition:background 0.2s;}
+	.gridCell:hover {background:#4caf5033;}
+	.cellSelected {background:#4caf50; color:#fff; box-shadow:0 0 1vmin #4caf50;}
+	.cellFound {background:#0f3460; color:#4caf50;}
+	#wordList {background:#16213e; padding:2vmin; border-radius:1vmin; width:100%; overflow-y:auto; max-height:60vmin;}
+	.wordItem {margin:0.5vmin 0; font-size:2.2vmin; opacity:0.8; font-family:monospace;}
+	.wordStruck {text-decoration:line-through; color:#4caf50; opacity:0.4;}
+	.uiBtn {width:100%; max-width:60vmin; background:#4caf50; color:white; border:none; padding:2vmin 4vmin; border-radius:1.5vmin; cursor:pointer; font-size:2.5vmin; font-weight:bold; box-shadow:0 0.6vmin 0 #2e7d32; margin-top:1vmin;}
+	.uiBtn:hover {filter:brightness(1.1); transform:translateY(-0.2vmin);}
+	.uiBtn:active {transform:translateY(0.4vmin); box-shadow:none;}
+	.optRow {display:flex; align-items:center; justify-content:space-between; font-size:2.2vmin; background:#0f3460; padding:.75vmin; border-radius:1.5vmin; border:0.1vmin solid #4caf5022;}
+	.checkGrid {display:grid; grid-template-columns:1fr 1fr; gap:2vmin;}
+	.checkGrid div {display:flex; align-items:center; justify-content:space-between; background:#0f3460; padding:1vmin; border-radius:1.5vmin; border:0.1vmin solid #4caf5022;}
+	#searchApp input[type=number], #searchApp input[type=text] {background:transparent; border:none; width:30vmin; text-align:right; font-family:monospace; font-size:2.2vmin; color:white;}
+	#searchApp input[type=number]:focus, #searchApp input[type=text]:focus {text-shadow:0 0 0.5vmin #81c784;}
+	#searchApp input[type=checkbox] {appearance:none; width:6vmin; height:3vmin; background:#1a1a2e; border-radius:2vmin; position:relative; cursor:pointer; border:0.2vmin solid #4caf50;}
+	#searchApp input[type=checkbox]:checked {background:#4caf50;}
+	#searchApp input[type=checkbox]::before {content:""; position:absolute; width:2vmin; height:2vmin; background:#fff; border-radius:50%; top:0.4vmin; left:0.6vmin;}
+	#searchApp input[type=checkbox]:checked::before {left:3.2vmin;}
+	#gameTimer {font-size:6vmin; color:#4caf50; margin-bottom:1vmin; font-family:monospace;}
+	#winScreen {display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(26,26,46,0.95); flex-direction:column; align-items:center; justify-content:center; z-index:100; animation:fadeIn 0.5s;}
+	#winTitle {font-size:10vmin; color:#4caf50; text-shadow:0 0 20px #4caf50;}
+	#winStats {font-size:4vmin; margin:4vmin;}
+	@keyframes fadeIn {from {opacity:0;} to {opacity:1;}}
+	@media (max-width:900px) {
+		#gameContainer {flex-direction:column;}
+		#wordListArea {order:1; width:100%; display:flex; flex-direction:column; gap:1vmin; align-items:center;}
+	}
+</style>
+</head>
+<body>
+	<div id=mainMenu>
+		<div class=gameTitle>WORD GAMES</div>
+		<button class=uiBtn onclick="mainMenu.style.display='none'; ladderApp.style.display='flex'; renderSetupMain()">Word Ladder</button>
+		<button class=uiBtn onclick="mainMenu.style.display='none'; searchApp.style.display='flex'">Word Search</button>
+	</div>
+	
+	<div id=ladderApp>
+		<div id=setup>
+			<div class=gameTitle>Word Ladder</div>
+			<p id=desc>Change, add, remove 1 letter, or swap adjacent letters.</p>
+			<div id=setupLadder>
+				<div class=railL></div><div class=railR></div>
+				<div id=setupRungs></div>
+			</div>
+			<button class=uiBtn onclick="ladderApp.style.display='none'; mainMenu.style.display='flex'" style="margin-bottom:3vmin;">Back to Hub</button>
+		</div>
+		<div id=game>
+			<div id=infoBar></div>
+			<div id=ladder><div class=railL></div><div class=railR></div></div>
+			<div id=mirrorRow>
+				<div class=mLadder id=mLadder1><div class=mLadderLabel>Player 1</div><div class=railL></div><div class=railR></div></div>
+				<div class=mLadder id=mLadder2><div class=mLadderLabel>Player 2</div><div class=railL></div><div class=railR></div></div>
+			</div>
+			<div id=statusMsg></div>
+			<div id=rotMap></div>
+			<div id=decayAlpha></div>
+			<div id=timerRow>
+				<div id=timerNum></div>
+				<div id=timerBar><div id=timerFill></div></div>
+			</div>
+			<div id=inputRow>
+				<input id=wordIn type=text placeholder="next word…" autocomplete=off autocorrect=off spellcheck=false onkeydown='if(event.key=="Enter")submitWord()'>
+				<button class=uiBtn onclick=submitWord()> --▶ </button>
+			</div>
+			<button class=uiBtn onclick="showResult('Survived '+(st.words.length-1)+' steps!')">Give Up</button>
+		</div>
+		<div id=result>
+			<h2 id=resultTitle></h2>
+			<div id=resultLadder></div>
+			<button class=uiBtn onclick='result.style.display="none"; setup.style.display="flex"; renderSetupMain()'>Play Again</button>
+		</div>
+	</div>
+
+	<div id=searchApp>
+		<div class=gameTitle>Word Search</div>
+		<div id=setupArea>
+			<textarea id=wordInput placeholder="Custom words (line, space, or special character separated)..."></textarea>
+			<div class=optRow><span>Grid Size</span><input type=number id=gridSize min=5 max=24 value=12></div>
+			<div class=optRow><span>Word Count (Attempt)</span><input type=number id=wordCount min=1 max=100 value=12></div>
+			<div class=optRow><span>Seed (Events, not words)</span><input type=text id=seedVal placeholder=Random></div>
+			<div class=checkGrid>
+				<div><span>Overlap</span><input type=checkbox id=allowOverlap checked></div>
+				<div><span>Backwards</span><input type=checkbox id=allowBackwards checked></div>
+				<div><span>Rotate</span><input type=checkbox id=useRotate checked></div>
+				<div><span>Flip</span><input type=checkbox id=useFlip checked></div>
+				<div><span>Chaos</span><input type=checkbox id=useChaos checked></div>
+				<div><span>Shift</span><input type=checkbox id=useShift checked></div>
+			</div>
+			<div class=optRow><span>Gimmick Frequency (s)</span><input type=number id=gimRateVal value=0 min=0></div>
+			<button class=uiBtn onclick=startSearchGame()>Start Game</button>
+			<button class=uiBtn onclick="searchApp.style.display='none'; mainMenu.style.display='flex'">Back to Hub</button>
+		</div>
+		<div id=gameContainer>
+			<div id=wordBoard onmouseleave=clearSelection()></div>
+			<div id=wordListArea>
+				<div id=gameTimer>00:00</div>
+				<div id=wordList></div>
+				<button class=uiBtn onclick=resetSearch()>Menu</button>
+			</div>
+		</div>
+		<div id=winScreen>
+			<div id=winTitle>Victory!</div>
+			<div id=winStats></div>
+			<button class=uiBtn onclick=resetSearch()>Play Again</button>
+		</div>
+	</div>
+</body>
+<script>
+	let cfg = {mode:'vs', timerSec:15, blitz:false, mirror:false, hotCold:false, scaffold:false, wpCount:4, vHealth:15, cHealth:5}, st = {};
+
+	function renderSetupMain() {
+		let c = 5, temp = '';
+		for (let i of ['vs','puzzle','rot','decay','freeplay']) {
+			temp += `<div class=modeRung onclick="cfg.mode='${i}';`
+			if (i == 'rot' || i == 'freeplay') temp += ` startLadderGame();"`
+			else temp += ` selectMode('${i}');"`;
+			temp += ` style="width:${100-6*c}%; left: ${c*3}%">${i}</div>`;
+			c--;
+		}
+		setupRungs.innerHTML = temp;
+	}
+
+	function selectMode(m) {
+		let items = ['▶ START'];
+		if (m == 'vs') items.push(
+			`timer <input type=number id=timerInput min=5 max=60 value=15> s`,
+			`<div class=chkLabel onclick="blitzCheck.click()"><input type=checkbox id=blitzCheck onclick="event.stopPropagation()"> blitz </div>`,
+			`<div class=chkLabel onclick="mirrorCheck.click()"><input type=checkbox id=mirrorCheck onclick="event.stopPropagation()"> mirror </div>`,
+			`<div class=chkLabel onclick=sdCheck.click()><input type=checkbox id=sdCheck onclick=event.stopPropagation()> sudden death </div>`
+		); else if (m == 'puzzle') items.push(
+			`start <input type=text id=startInput placeholder=random>`,
+			`end <input type=text id=endInput placeholder=random>`,
+			`<div class=chkLabel onclick=scCheck.click()><input type=checkbox id=scCheck onclick=event.stopPropagation()> scaffold </div>`,
+			`points <input type=number id=waypointInput min=1 max=8 value=4>`,
+			`<div class=chkLabel onclick=hcCheck.click()><input type=checkbox id=hcCheck onclick=event.stopPropagation()>hot & cold</div>`
+		); else if (m == 'decay') items.push(
+			`vowels <input type=number id=vowHP min=1 max=30 value=15>`,
+			`consonants <input type=number id=conHP min=1 max=15 value=5>`
+		);
+		items.push('◀ BACK')
+		let c = items.length, temp = '';
+		for (let i of items) {
+			temp += `<div class='modeRung`
+			if (i == '▶ START') temp += ` start' onclick='startLadderGame()`
+			else if (i == '◀ BACK') temp += ` back' onclick='renderSetupMain()`
+			temp += `' style="width:${100-6*c}%; left: ${c*3}%">${i}</div>`;
+			c--;
+		}
+		setupRungs.innerHTML = temp;
+	}
+
+	function isOneStep(a, b) {
+		if (a == b) return false;
+		if (a.length == b.length) {
+			let d = 0, f = -1;
+			for (let i = 0; i < a.length; i++) if (a[i] != b[i]) {d++; if (f < 0) f = i;}
+			return d == 1 || (d == 2 && f < a.length - 1 && a[f] == b[f+1] && a[f+1] == b[f]);
+		}
+		let [s, l] = a.length < b.length ? [a, b] : [b, a];
+		if (l.length - s.length != 1) return false;
+		let i = 0, j = 0, skp = false;
+		while (i < s.length && j < l.length) {
+			if (s[i] != l[j]) {if (skp) return false; skp = true; j++;}
+			else {i++; j++;}
+		}
+		return true;
+	}
+
+	function levenshtein(a, b) {
+		let m = a.length, n = b.length, dp = [];
+		for (let i = 0; i <= m; i++) {dp[i] = [i]; for (let j = 1; j <= n; j++) dp[i][j] = i == 0 ? j : 0;}
+		for (let i = 1; i <= m; i++) for (let j = 1; j <= n; j++)
+			dp[i][j] = a[i-1] == b[j-1] ? dp[i-1][j-1] : 1 + Math.min(dp[i-1][j], dp[i][j-1], dp[i-1][j-1]);
+		return dp[m][n];
+	}
+
+	function renderScaffold() {
+		let all = [st.words[0], ...st.scT], temp = '<div class=scNodes>';
+		for (let i of all) {
+			temp += '<div class="scNode'
+			if (i == all[0]) temp += ' scStart';
+			else if (all.indexOf(i) < st.scI) temp += ' scDone';
+			else if (all.indexOf(i) == st.scI) temp += ' scNext';
+			else temp += ' scFuture';
+			temp += `">${i}</div>`
+			if (i != all.at(-1)) temp += '<span class=scArrow>→</span>';
+		}
+		infoBar.innerHTML = temp;
+	}
+
+	function renderRotMap() {
+		let list = cfg.mode == 'freeplay' ? [...st.words].reverse() : [...st.known].sort(), temp = '';
+		rotMap.style.fontSize = Math.min(1.6, 88 / Math.max(list.length, 1)) + 'vmin';
+		for (let i of list) {
+			if (cfg.mode == 'freeplay') temp += `<div class='rw fp'>${i}</div>`;
+			else temp += `<div class='rw ${st.rotF.has(i) ? 'corrupt' : st.words.includes(i) ? 'played' : 'known'}'>${i}</div>`;
+		}
+		rotMap.innerHTML = temp;
+		if (cfg.mode == 'rot') infoBar.innerHTML = `<span style="color:#e74c3c">${st.rotF.size} words corrupted</span>`;
+	}
+
+	async function discoverNeighbors(w) {
+		let patterns = [];
+		for (let i = 0; i < w.length; i++) patterns.push(w.slice(0,i) + '?' + w.slice(i+1));
+		for (let i = 0; i <= w.length; i++) patterns.push(w.slice(0,i) + '?' + w.slice(i));
+		for (let i = 0; i < w.length; i++) {let d = w.slice(0,i) + w.slice(i+1); if (d.length >= 2) patterns.push(d);}
+		await Promise.all(patterns.map(async p => {
+			try {
+				let res = await (await fetch(`https://api.datamuse.com/words?sp=${p}&max=100`)).json();
+				res.forEach(r => {if (isOneStep(w, r.word)) st.known.add(r.word);});
+			} catch(e) {}
+		}));
+		renderRotMap();
+	}
+
+	function renderDecay() {
+		decayAlpha.innerHTML = [...'abcdefghijklmnopqrstuvwxyz'].map(c => {
+			let h = st.lH[c];
+			return `<div class=ltile style="background:${h <= 0 ? '#222' : h == 1 ? '#c0392b' : h <= 3 ? '#e67e22' : '#27ae60'}; opacity:${h <= 0 ? 0.3 : 1}; text-decoration:${h <= 0 ? 'line-through' : 'none'}">${c}</div>`;
+		}).join('');
+	}
+
+	async function getRandWord(len) {
+		let l = len || (3 + Math.floor(Math.random() * 4)), rw = '';
+		for (let i = 0; i < 20; i++) {
+			try {
+				let res = await (await fetch(`https://api.datamuse.com/words?sp=${'?'.repeat(l)}&max=100`)).json();
+				let pool = res.filter(r => /^[a-z]+$/.test(r.word));
+				if (pool.length) { rw = pool[Math.floor(Math.random() * pool.length)].word; if (await isRealWord(rw)) return rw; }
+			} catch(e) {}
+		}
+		return 'panic';
+	}
+
+	async function isRealWord(w) {
+		try {return (await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${w}`)).ok;}
+		catch(e) {return true;}
+	}
+
+	function startTimer() {
+		clearInterval(st.tick);
+		st.left = cfg.timerSec;
+		timerFill.style.width = '100%';
+		timerNum.textContent = st.left + 's';
+		st.tick = setInterval(() => {
+			st.left--;
+			timerNum.textContent = st.left + 's';
+			timerFill.style.width = (st.left / cfg.timerSec * 100) + '%';
+			if (st.left <= 0) {clearInterval(st.tick); showResult(`Player ${st.cur == 1 ? 2 : 1} wins! Player ${st.cur} ran out of time.`);}
+		}, 1000);
+	}
+
+	function renderStack(e) {
+		if (cfg.mirror) {
+			[[mLadder1, st.p1, 'Player 1'], [mLadder2, st.p2, 'Player 2']].forEach(([el, ws, lbl]) => {
+				let s = ws.slice(-8), n = s.length;
+				el.innerHTML = `<div class=mLadderLabel>${lbl}</div><div class=railL></div><div class=railR></div>` + s.map((w, i) => {
+					let wd = 100 - (n - 1 - i) * 5;
+					return `<div class=rung style="font-size:${1.5 + 4 * (wd/100)}vmin; opacity:${0.55 + 0.45 * (wd/100)}; width:${wd}%;">${w}</div>`;
+				}).join('');
+			});
+			mLadder1.className = 'mLadder' + (st.cur == 1 ? '' : ' inactive');
+			mLadder2.className = 'mLadder' + (st.cur == 2 ? '' : ' inactive');
+		} else {
+			let w = e, temp = '<div class=railL></div><div class=railR></div>';
+			for (let i of w) {
+				temp += `<div class=rung style='font-size:${(w.indexOf(i)+1)/w.length*7}vmin; width: `;
+				if (i == w.at(-1)) temp += '100%'
+				if (i != w.at(-1)) temp += `${100-6*(w.length-w.indexOf(i))}%; opacity: ${1-.1*(w.length-w.indexOf(i))}`;
+				temp += `;'>${i}`
+				try{
+					if (cfg.mode == 'rot' && i != st.words[0]) {
+						temp += `<small style='opacity:0.6; font-size:0.5em'> (${st.rotQ.find(r => r.w == i).rotAt - st.turn})</small>`;
+					}
+				} catch(e) {}
+				temp += '</div>';
+			}
+			ladder.innerHTML = temp;
+		}
+	}
+
+	async function submitWord() {
+		if (st.busy) return;
+		let w = wordIn.value.trim().toLowerCase().replace(/[^a-z]/g, ''), err = '';
+		wordIn.value = '';
+		let prev = st.words[st.words.length - 1];
+		if (w == '') err = 'Please enter a word';
+		else if (!isOneStep(prev, w)) err = 'Follow the RULES';
+		else if (st.words.includes(w) || (cfg.mirror && (st.cur == 1 ? st.p2 : st.p1).includes(w))) err = 'Word already used!';
+		else if (w.length == prev.length + 1 && w.endsWith('s') && w.slice(0, -1) == prev) err = 'No pluralizing!';
+		else if (cfg.mode == 'rot' && st.rotF.has(w)) err = 'That word has been corrupted!';
+		else if (cfg.mode == 'decay') {
+			let dead = [...new Set([...w])].filter(c => st.lH[c] <= 0 && ([...w].filter(x => x == c).length > [...prev].filter(x => x == c).length));
+			if (dead.length) err = 'Dead: ' + dead.join(' ').toUpperCase();
+		}
+		if (err) {
+			if (cfg.mode == 'vs' && cfg.death) {clearInterval(st.tick); showResult(`Player ${st.cur == 1 ? 2 : 1} wins! ${err}`);}
+			else {statusMsg.textContent = err; wordIn.classList.add('err'); setTimeout(() => wordIn.classList.remove('err'), 400);}
+			return;
+		}
+		if (cfg.mode == 'vs') clearInterval(st.tick);
+		st.busy = true; statusMsg.textContent = 'Checking…';
+		let ok = await isRealWord(w);
+		st.busy = false; statusMsg.textContent = '';
+		if (!ok) {
+			if (cfg.mode == 'vs' && cfg.death) showResult(`Player ${st.cur == 1 ? 2 : 1} wins! Player ${st.cur} used a non-word.`);
+			else {statusMsg.textContent = 'Not a valid word!'; wordIn.classList.add('err'); setTimeout(() => wordIn.classList.remove('err'), 400);}
+			return;
+		}
+		st.words.push(w);
+		if (cfg.mode == 'vs') {
+			st.cur = st.cur == 1 ? 2 : 1;
+			infoBar.textContent = `Player ${st.cur}'s Turn`;
+			if (cfg.mirror) {st.words = st.cur == 1 ? st.p1 : st.p2; renderStack([...st.words.slice(-10)]);}
+			if (cfg.blitz) cfg.timerSec = Math.max(3, cfg.timerSec - 1);
+			startTimer();
+		}
+		else if (cfg.mode == 'puzzle') {
+			if (w == st.target) {showResult(`Solved in ${st.words.length - 1}steps!`); return;}
+			if (cfg.scaffold && w == st.scT[st.scI]) {
+				st.scI++;
+				statusMsg.textContent = '✓ Waypoint reached!';
+				setTimeout(() => {if (statusMsg.textContent == '✓ Waypoint reached!') statusMsg.textContent = '';}, 1200);
+				renderScaffold();
+			}
+			if (cfg.hotCold) {
+				let dist = levenshtein(w, st.target);
+				if (dist > 0) {
+					infoBar.innerHTML = `<span style='font-size:3.2vmin'>${st.words[0].toUpperCase()} → ???</span> <span style='font-size:4vmin; color:${dist < st.hCD ? '#e67e22' : dist > st.hCD ? '#3498db' : '#aaa'}'>${dist < st.hCD ? 'Hotter' : dist > st.hCD ? 'Colder' : 'Same distance'}</span>`;
+				}
+				st.hCD = dist;
+				let list = st.words.map(w => ({w, d: levenshtein(w, st.target)})), maxD = Math.max(...list.map(x => x.d), 1);
+				list.sort((a, b) => b.d - a.d);
+				rotMap.style.fontSize = Math.min(1.6, 88 / Math.max(list.length, 1)) + 'vmin';
+				let temp = '';
+				for (let i of list) {
+					let t = 1 - i.d / maxD, cls = t >= 0.85 ? 'hcHot' : t >= 0.6 ? 'hcWarm' : t >= 0.35 ? 'hcMid' : t >= 0.15 ? 'hcCool' : 'hcCold';
+					temp += `<div class="rw ${cls}">${i.w}</div>`;
+				}
+				rotMap.innerHTML = temp;
+			}
+		}
+		else if (cfg.mode == 'rot') {
+			st.known.add(w); st.turn++;
+			st.rotQ.push({w, rotAt: st.turn + w.length});
+			let nb = new Set(), a = 'abcdefghijklmnopqrstuvwxyz';
+			st.rotQ.filter(r => r.rotAt <= st.turn).forEach(r => {
+				let rw = r.w;
+				for (let i = 0; i < rw.length; i++) {for (let c of a) {if (c != rw[i]) nb.add(rw.slice(0, i) + c + rw.slice(i+1));}}
+				for (let i = 0; i < rw.length; i++) {nb.add(rw.slice(0, i) + rw.slice(i+1));}
+				for (let i = 0; i <= rw.length; i++) {for (let c of a) {nb.add(rw.slice(0, i) + c + rw.slice(i));}}
+				nb.forEach(n => st.rotF.add(n));
+			});
+			st.rotQ = st.rotQ.filter(r => r.rotAt > st.turn);
+			discoverNeighbors(w);
+			renderRotMap();
+		}
+		else if (cfg.mode == 'decay') {
+			for (let c of new Set([...w])) st.lH[c] = Math.max(0, st.lH[c] - 1);
+			renderDecay();
+		} else if (cfg.mode == 'freeplay') renderRotMap();
+		renderStack([...st.words.slice(-6)]);
+		wordIn.focus();
+	}
+
+	function showResult(title) {
+		clearInterval(st.tick);
+		game.style.display = 'none'; result.style.display = 'flex';
+		resultTitle.innerHTML = title;
+		let combined = cfg.mirror ? [...st.p1].reverse().concat(st.p2.slice(1)) : st.words, temp = '<div class=railL></div><div class=railR></div>';
+		for (let i of combined) {
+			temp += `<div class='rung`;
+			if (i == combined[0]) temp += ' rungFirst';
+			else if (i == combined.at(-1)) temp += ' rungLast'
+			temp += `'>${i}</div>`;
+		}
+		resultLadder.innerHTML = temp;
+		if (cfg.mirror) resultLadder.scrollTop = resultLadder.scrollHeight / 2;
+	}
+
+	async function startLadderGame() {
+		st = {words:[], p1:[], p2:[], cur:1, tick:null, left:0, target:'', busy:false, hCD:0, known:new Set(), rotF:new Set(), rotQ:[], lH:{}, turn:0, scT:[], scI:0, death:false};
+		statusMsg.textContent = 'Fetching words…';
+		setup.style.display = timerRow.style.display = mirrorRow.style.display = 'none';
+		game.style.display = ladder.style.display = 'flex';
+		let first = await getRandWord();
+		if (cfg.mode == 'vs') {
+			cfg.timerSec = Math.min(60, Math.max(5, parseInt(timerInput.value) || 15));
+			cfg.blitz = blitzCheck.checked;
+			cfg.mirror = mirrorCheck.checked;
+			cfg.death = sdCheck.checked;
+			if (cfg.mirror) {
+				ladder.style.display = 'none';
+				mirrorRow.style.display = 'flex';
+				st.p1 = [first]; st.p2 = [first];
+				game.classList.toggle('mirror', cfg.mirror);
+			}
+			timerRow.style.display = 'flex';
+			infoBar.textContent = `Player 1's Turn`;
+			startTimer();
+		}
+		else if (cfg.mode == 'puzzle') {
+			cfg.hotCold = hcCheck.checked;
+			cfg.scaffold = scCheck.checked;
+			cfg.wpCount = waypointInput.value;
+			first = startInput.value.trim().toLowerCase() || await getRandWord();
+			st.words = [first]
+			st.target = cfg.hotCold ? await getRandWord() : (endInput.value.trim().toLowerCase() || await getRandWord());
+			if (cfg.scaffold) {
+				while (st.scT.length < cfg.wpCount-1) {
+					let rw = await getRandWord();
+					if (await isRealWord(rw)) st.scT.push(rw);
+				}
+				st.scT.push(st.target);
+				renderScaffold();
+			}
+			if (cfg.hotCold) {
+				st.hCD = levenshtein(first, st.target);
+				if (cfg.scaffold) console.log ('I should really have it ??? all the words in the scaffold')
+				else infoBar.textContent = `${first.toUpperCase()} → ???`
+			} else if (!cfg.scaffold) infoBar.textContent = `${first.toUpperCase()} → ${st.target.toUpperCase()}`;
+		}
+		else if (cfg.mode == 'rot') {
+			st.known.add(first);
+			renderRotMap();
+			discoverNeighbors(first);
+			infoBar.textContent = 'Survive as long as you can!';
+		}
+		else if (cfg.mode == 'decay') {
+			cfg.vHealth = parseInt(vowHP.value);
+			cfg.cHealth = parseInt(conHP.value);
+			for (let c of 'abcdefghijklmnopqrstuvwxyz') st.lH[c] = 'aeiou'.includes(c) ? cfg.vHealth : cfg.cHealth;
+			decayAlpha.style.display = 'flex';
+			renderDecay();
+			infoBar.textContent = `Don't run out of letters!`;
+		}
+		else if (cfg.mode == 'freeplay') {renderRotMap(); infoBar.textContent = 'Keep going as long as possible!';}
+		st.words = [first];
+		rotMap.style.display = (cfg.mode == 'rot' || cfg.mode == 'freeplay' || cfg.hotCold) ? 'flex' : 'none';
+		statusMsg.textContent = '';
+		renderStack([...st.words]);
+		wordIn.focus();
+	}
+
+	let g = {words: [], grid: [], found: [], foundCells: [], sel: [], isDown: false, seed: 0, time: 0, tick: null, gimTick: null};
+	
+	function rng() {
+		g.seed = (g.seed * 9301 + 49297) % 233280;
+		return g.seed / 233280;
+	}
+
+	async function startSearchGame() {
+		g.seed = seedVal.value ? [...seedVal.value].reduce((a, b) => a + b.charCodeAt(0), 0) : Math.floor(Math.random() * 1000000);
+		let size = parseInt(gridSize.value), raw = wordInput.value.trim().toUpperCase().split(/[\s,]+/);
+		if (raw[0] == "") {
+			g.words = [];
+			let count = parseInt(wordCount.value), alpha = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+			while (g.words.length < count) {
+				let char = alpha[Math.floor(Math.random() * 26)], len;
+				if (rng() < 0.6) len = Math.floor(rng() * 2) + 4;
+				else {
+					let possibleLengths = [];
+					for (let l = 3; l <= size; l++) {
+						if (l != 4 && l != 5) possibleLengths.push(l);
+					}
+					if (possibleLengths.length > 0) len = possibleLengths[Math.floor(rng() * possibleLengths.length)]
+					else len = Math.floor(rng() * (size - 1)) + 2;
+				}
+				len = Math.max(2, Math.min(size, len));
+				let res = await (await fetch('https://api.datamuse.com/words?sp=' + (char + '?'.repeat(len - 1)) + '&max=100')).json();
+				let pool = res.filter(w => w.word.length == len && !/[\s-]/.test(w.word));
+				let w = pool[Math.floor(rng() * pool.length)]?.word.toUpperCase();
+				if (w && !g.words.includes(w)) g.words.push(w);
+			}
+		} else g.words = raw.filter(w => w.length > 1);
+		g.found = []; g.foundCells = []; g.time = 0;
+		fillGrid();
+		wordBoard.style.gridTemplateColumns = `repeat(${size}, 1fr)`;
+		wordBoard.innerHTML = "";
+		for (let r = 0; r < size; r++) {
+			for (let c = 0; c < size; c++) {
+				let cell = document.createElement("div");
+				cell.className = "gridCell";
+				cell.id = `c${r}_${c}`;
+				cell.textContent = g.grid[r][c];
+				cell.onmousedown = () => { g.isDown = true; g.sel = [[r, c]]; updateSelection(r, c); };
+				cell.onmouseenter = () => { if (g.isDown) updateSelection(r, c); };
+				cell.onmouseup = () => checkSelection();
+				cell.ontouchstart = (e) => {
+					e.preventDefault();
+					g.isDown = true;
+					let idParts = e.target.id.substring(1).split('_');
+					let r = parseInt(idParts[0]), c = parseInt(idParts[1]);
+					g.sel = [[r, c]]; updateSelection(r, c);
+				};
+				cell.ontouchmove = (e) => {
+					e.preventDefault();
+					if (g.isDown) {
+						let target = document.elementFromPoint(e.touches[0].clientX, e.touches[0].clientY);
+						if (target && target.classList.contains('gridCell')) {
+							let idParts = target.id.substring(1).split('_');
+							let r = parseInt(idParts[0]), c = parseInt(idParts[1]);
+							if (g.sel.length > 0 && (g.sel.at(-1)[0] != r || g.sel.at(-1)[1] != c)) updateSelection(r, c);
+						}
+					}
+				};
+				cell.ontouchend = () => checkSelection();
+				wordBoard.appendChild(cell);
+			}
+		}
+		setupArea.style.display = "none";
+		gameContainer.style.display = "flex";
+		g.tick = setInterval(() => {
+			g.time++;
+			let m = Math.floor(g.time / 60), s = g.time % 60;
+			gameTimer.textContent = m.toString().padStart(2, '0') + ':' + s.toString().padStart(2, '0');
+		}, 1000);
+		if (gimRateVal.value > 0) g.gimTick = setInterval(() => rollGimmick(), gimRateVal.value * 1000);
+	}
+
+	function fillGrid() {
+		let size = parseInt(gridSize.value), placedWords = [];
+		g.grid = Array(size).fill().map(() => Array(size).fill(""));
+		g.foundCells = [];
+		g.words.forEach(word => {
+			let isFound = g.found.includes(word), b = allowBackwards.checked;
+			let placed = false, attempts = 0;
+			while (!placed && attempts++ < 100000) {
+				let dr = Math.floor(rng() * (b ? 3 : 2)) - (b ? 1 : 0), dc = Math.floor(rng() * (b ? 3 : 2)) - (b ? 1 : 0);
+				if (dr == 0 && dc == 0) continue;
+				let r = Math.floor(rng() * size), c = Math.floor(rng() * size);
+				let er = r + dr * (word.length - 1), ec = c + dc * (word.length - 1);
+				if (er < 0 || er >= size || ec < 0 || ec >= size) continue;
+				let canPlace = true, ov = 0;
+				for (let i = 0; i < word.length; i++) {
+					let char = g.grid[r + dr * i][c + dc * i];
+					if (char != '' && (char != word[i] || ++ov > (allowOverlap.checked ? 1 : 0))) { canPlace = false; break; }
+				}
+				if (canPlace && (allowOverlap.checked || ov == 0)) {
+					for (let i = 0; i < word.length; i++) {
+						let cr = r + dr * i, cc = c + dc * i;
+						g.grid[cr][cc] = word[i];
+						if (isFound) g.foundCells.push(cr + '_' + cc);
+					}
+					placed = true; placedWords.push(word);
+				}
+			}
+		});
+		g.words = placedWords;
+		g.found = g.found.filter(w => g.words.includes(w));
+		for (let r = 0; r < size; r++) {
+			for (let c = 0; c < size; c++) {
+				if (g.grid[r][c] == "") g.grid[r][c] = String.fromCharCode(65 + Math.floor(rng() * 26));
+			}
+		}
+		wordList.innerHTML = '<div class=gridCell>Find:</div>' +
+			g.words.map(w => `<div id=w_${w} class="${g.found.includes(w) ? 'wordItem wordStruck' : 'wordItem'}">${w}</div>`).join("");
+	}
+
+	function updateSelection(r, c) {
+		let start = g.sel[0], dr = r - start[0], dc = c - start[1], dist = Math.max(Math.abs(dr), Math.abs(dc));
+		if (dr != 0 && dc != 0 && Math.abs(dr) != Math.abs(dc)) return;
+		Array.from(wordBoard.children).forEach(el => el.classList.remove("cellSelected"));
+		g.sel = [];
+		let stepR = dr == 0 ? 0 : dr / dist, stepC = dc == 0 ? 0 : dc / dist;
+		for (let i = 0; i <= dist; i++) {
+			let currR = start[0] + stepR * i, currC = start[1] + stepC * i;
+			g.sel.push([currR, currC]);
+			window[`c${currR}_${currC}`].classList.add('cellSelected');
+		}
+	}
+
+	function checkSelection() {
+		g.isDown = false;
+		let word = g.sel.map(p => g.grid[p[0]][p[1]]).join(''), revWord = [...word].reverse().join('');
+		if (g.words.includes(word) || g.words.includes(revWord)) {
+			let target = g.words.includes(word) ? word : revWord;
+			if (!g.found.includes(target)) {
+				g.found.push(target);
+				window[`w_${target}`].className = "wordItem wordStruck";
+				g.sel.forEach(p => {
+					g.foundCells.push(`${p[0]}_${p[1]}`);
+					window[`c${p[0]}_${p[1]}`].classList.add("cellFound");
+				});
+				if (parseInt(gimRateVal.value) == 0) rollGimmick();
+				if (g.found.length == g.words.length) {
+					clearInterval(g.tick); clearInterval(g.gimTick);
+					winStats.textContent = `Time: ${gameTimer.textContent} | Words: ${g.words.length}`;
+					winScreen.style.display = 'flex';
+				}
+			}
+		}
+		clearSelection();
+	}
+
+	function rollGimmick() {
+		let rolls = [];
+		if (useRotate.checked) rolls.push(() => wordBoard.style.transform += 'rotate(90deg)');
+		if (useFlip.checked) rolls.push(() => wordBoard.style.transform += 'scaleX(-1)');
+		if (useChaos.checked) rolls.push(() => chaosGimmick());
+		if (useShift.checked) rolls.push(() => shiftGrid());
+		if (rolls.length > 0) rolls[Math.floor(rng() * rolls.length)]();
+	}
+
+	function chaosGimmick() {
+		Array.from(wordBoard.children).forEach(el => 
+			el.style.transform = `rotate(${Math.floor(rng() * 4) * 90}deg) ${rng() < 0.5 ? 'scaleX(-1)' : ''}`);
+	}
+
+	function shiftGrid() {
+		fillGrid();
+		let size = parseInt(gridSize.value);
+		for (let r = 0; r < size; r++) {
+			for (let c = 0; c < size; c++) {
+				let el = window[`c${r}_${c}`]; el.textContent = g.grid[r][c];
+				el.classList.toggle('cellFound', g.foundCells.includes(`${r}_${c}`));
+			}
+		}
+		wordBoard.style.opacity = 0.5;
+		setTimeout(() => wordBoard.style.opacity = 1, 150);
+		if (g.found.length == g.words.length && g.words.length > 0) {
+			clearInterval(g.tick); clearInterval(g.gimTick);
+			winStats.textContent = `Time: ${gameTimer.textContent} | Words: ${g.words.length}`;
+			winScreen.style.display = 'flex';
+		}
+	}
+
+	function clearSelection() {
+		g.isDown = false;
+		Array.from(wordBoard.children).forEach(el => el.classList.remove("cellSelected"));
+	}
+
+	window.onmouseup = () => { if (g.isDown) checkSelection(); };
+
+	function resetSearch() {
+		setupArea.style.display = "flex"; 
+		winScreen.style.display = gameContainer.style.display = "none";
+		clearInterval(g.tick); clearInterval(g.gimTick);
+		wordBoard.style.transform = "";
+		Array.from(wordBoard.children).forEach(el => el.transform = "");
+		gameTimer.innerHTML = "00:00";
+	}
+</script>
+</html>

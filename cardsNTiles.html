@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<title>Cards and Tiles</title>
+<!-- A collection of games that use various tiles and cards
+	Mahjong Tiles: 🀀🀁🀂🀃🀅🀆🀇🀈🀉🀊🀋🀌🀍🀎🀏🀐🀑🀒🀓🀔🀕🀖🀗🀘🀙🀚🀛🀜🀝🀞🀟🀠🀡
+	Dominos: 🀱🀲🀳🀴🀵🀶🀷🀸🀹🀺🀻🀼🀽🀾🀿🁀🁁🁂🁃🁄🁅🁆🁇🁈🁉🁊🁋🁌🁍🁎🁏🁐🁑🁒🁓🁔🁕🁖🁗🁘🁙🁚🁛🁜🁝🁞🁟🁠🁡🁣🁤🁥🁦🁧🁨🁩🁪🁫🁬🁭🁮🁯🁰🁱🁲🁳🁴🁵🁶🁷🁸🁹🁺🁻🁼🁽🁾🁿🂀🂁🂂🂃🂄🂅🂆🂇🂈🂉🂊🂋🂌🂍🂎🂏🂐🂑🂒🂓
+	Playing Cards: 🂠🂡🂢🂣🂤🂥🂦🂧🂨🂩🂪🂫🂬🂭🂮🂱🂲🂳🂴🂵🂶🂷🂸🂹🂺🂻🂼🂽🂾🃁🃂🃃🃄🃅🃆🃇🃈🃉🃊🃋🃌🃍🃎🃏🃑🃒🃓🃔🃕🃖🃗🃘🃙🃚🃛🃜🃝🃞
+	Dice: ⚀⚁⚂⚃⚄⚅
+This is just a test to see how the browser renders these variouus items
+Last modified: 21 May 2026-->
+<html lang=en>
+<head>
+<meta charset=UTF-8 name=viewport content='width=device-width, initial-scale=1.0'>
+<style>
+	body {background:#0d0d1a; color:#e0e0e0; font-family:system-ui,sans-serif; text-align:center; padding:3vmin; overflow-x:hidden;}
+	h2 {color:#4caf50; border-bottom:1px solid #333; padding-bottom:1vmin; margin-top:5vmin;}
+	.itemGrid {display:flex; flex-wrap:wrap; justify-content:center; gap:1.5vmin; background:#161625; padding:2vmin; border-radius:1vmin;}
+	.tile {font-size:8vmin; cursor:default; transition:transform 0.1s; user-select:none;}
+	.memTile {font-size:8vmin; width:12vmin; height:12vmin; background:#333; display:flex; align-items:center; justify-content:center; border-radius:1vmin; cursor:pointer; user-select:none;}
+	.tile:hover {transform:scale(1.2); color:#fff;}
+	.gameBtn {background:#4caf50; color:#fff; border:none; padding:1.5vmin 3vmin; border-radius:1vmin; cursor:pointer; font-size:3vmin; font-weight:bold; transition:0.2s;}
+	.gameBtn:hover {filter:brightness(1.2);}
+	.res {width:100%; font-size:6vmin; color:#ffeb3b; display:flex; align-items:center; justify-content:center; gap:4vmin; padding:2vmin; min-height:12vmin;}
+	.vs {color:#aaa; font-size:4vmin;}
+</style>
+</head>
+<body>
+	<h2>Mahjong</h2>
+	<div id=mjArea class=itemGrid></div>
+	<h2>Dominos</h2>
+	<div id=dmArea class=itemGrid></div>
+	<h2>Playing Cards</h2>
+	<div id=pcArea class=itemGrid></div>
+	<h2>Dice</h2>
+	<div id=dcArea class=itemGrid></div>
+	<h2>Memory Match</h2>
+	<div class=itemGrid>
+		<button class=gameBtn onclick=startMem()>New Game</button>
+		<div id=memRes class=res></div>
+		<div id=memArea class=itemGrid style=width:100%></div>
+	</div>
+	
+	<h2>Card Battle (War)</h2>
+	<div class=itemGrid>
+		<button class=gameBtn onclick=playWar()>Draw Cards</button>
+		<div id=warRes class=res></div>
+	</div>
+
+	<h2>Dice Clash</h2>
+	<div class=itemGrid>
+		<button class=gameBtn onclick=rollDice()>Roll vs CPU</button>
+		<div id=diceRes class=res></div>
+	</div>
+
+</body>
+<script>
+	let itemSets = {
+		mj: '🀀🀁🀂🀃🀅🀆🀇🀈🀉🀊🀋🀌🀍🀎🀏🀐🀑🀒🀓🀔🀕🀖🀗🀘🀙🀚🀛🀜🀝🀞🀟🀠🀡',
+		dm: '🀱🀲🀳🀴🀵🀶🀷🀸🀹🀺🀻🀼🀽🀾🀿🁀🁁🁂🁃🁄🁅🁆🁇🁈🁉🁊🁋🁌🁍🁎🁏🁐🁑🁒🁓🁔🁕🁖🁗🁘🁙🁚🁛🁜🁝🁞🁟🁠🁡🁣🁤🁥🁦🁧🁨🁩🁪🁫🁬🁭🁮🁯🁰🁱🁲🁳🁴🁵🁶🁷🁸🁹🁺🁻🁼🁽🁾🁿🂀🂁🂂🂃🂄🂅🂆🂇🂈🂉🂊🂋🂌🂍🂎🂏🂐🂑🂒🂓',
+		pc: '🂠🂡🂢🂣🂤🂥🂦🂧🂨🂩🂪🂫🂬🂭🂮🂱🂲🂳🂴🂵🂶🂷🂸🂹🂺🂻🂼🂽🂾🃁🃂🃃🃄🃅🃆🃇🃈🃉🃊🃋🃌🃍🃎🃏🃑🃒🃓🃔🃕🃖🃗🃘🃙🃚🃛🃜🃝🃞',
+		dc: '⚀⚁⚂⚃⚄⚅'
+	};
+
+	for (let i in itemSets) for (let j of itemSets[i]) window[i + 'Area'].innerHTML += '<div class=tile>' + j + '</div>';
+
+	let ms = {f: [], m: 0, b: 0};
+	function startMem() {
+		let s = [...itemSets.mj].sort(() => Math.random() - .5).slice(0, 10);
+		let deck = [...s, ...s].sort(() => Math.random() - .5);
+		ms = {f: [], m: 0, b: 0};
+		memRes.innerHTML = '';
+		memArea.innerHTML = '';
+		deck.forEach((v, i) => {memArea.innerHTML += `<div id=mt${i} class=memTile onclick=flip(${i},'${v}')>?</div>`;});
+	}
+
+	function flip(i, v) {
+		let t = window['mt' + i];
+		if (ms.b || ms.f.some(x => x.i == i) || t.innerHTML == v) return;
+		t.innerHTML = v;
+		t.style.background = '#161625';
+		ms.f.push({i, v});
+		if (ms.f.length == 2) {
+			if (ms.f[0].v == ms.f[1].v) {
+				ms.m++;
+				ms.f = [];
+				if (ms.m == 10) memRes.innerHTML = 'Matched all pairs!';
+			} else {
+				ms.b = 1;
+				setTimeout(() => {
+					ms.f.forEach(x => {
+					let el = window['mt' + x.i];
+					el.innerHTML = '?'; el.style.background = '#333'; });
+					ms.f = []; ms.b = 0;
+				}, 700);
+			}
+		}
+	}
+
+	function playWar() {
+		let p = [...itemSets.pc];
+		let v1 = Math.floor(Math.random() * p.length), v2 = Math.floor(Math.random() * p.length);
+		warRes.innerHTML = '<div class=tile>' + p[v1] + '</div><span class=vs>VS</span><div class=tile>' + p[v2] + 
+			'</div> | ' + (v1 > v2 ? 'WIN!' : v1 == v2 ? 'TIE' : 'LOSS');
+	}
+
+	function rollDice() {
+		let d = [...itemSets.dc];
+		let v1 = Math.floor(Math.random() * d.length), v2 = Math.floor(Math.random() * d.length);
+		diceRes.innerHTML = '<div class=tile>' + d[v1] + '</div><span class=vs>VS</span><div class=tile>' + d[v2] + 
+			'</div> | ' + (v1 > v2 ? 'WIN!' : v1 == v2 ? 'TIE' : 'LOSS');
+	}
+</script>
+</html>

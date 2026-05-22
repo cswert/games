@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<title>Pleggle</title>
+<!-- The most realistic peggle clone... made in js...
+	Storymode and random roguelike mode
+	Built in level editor, share with json
+	Multiple abilities/powerups
+Created by cswert
+Vibe coded with Gemini
+Last modified May 2026-->
+<html lang="en">
+<head>
+<meta charset=UTF-8 name=viewport content='width=device-width, initial-scale=1.0'>
+<style>
+	:root {
+		--b: #122575FF; --bl: #ABC5EAFF; --bb: #6280C2FF;
+		--o: #B32608FF; --ol: #FFF8B9FF; --ob: #E4C47DFF;
+		--g: #005D00FF; --gl: #B1F488FF; --gb: #1BD21EFF;
+		--p: #830276FF; --pl: #F886F9FF; --pb: #C075C1FF;
+		--r: #8B0000FF; --rl: #FF7F7FFF; --rb: #FF0000FF;
+	}
+	body {margin: 0 auto; padding: 3vmin; overflow: hidden; height: 100%;
+		background: radial-gradient(#FDCD58FF, #7D4BAAFF); font-family: monospace; font-weight: bolder;
+		font-size: 3vmin; user-select: none; color: black; paint-order: stroke fill;}
+	h1 {font-size: 20vmin; background: linear-gradient(45deg, #DA2533FF, #FEAC2CFF); 
+		background-clip: text; color: transparent; -webkit-text-stroke: 1vmin #FDDD50FF; margin: 0px;}
+	p {font-size: 8vmin; background: linear-gradient(90deg, #9762B8FF, #9738AEFF); margin: 0px;
+		background-clip: text; color: transparent; -webkit-text-stroke: .5vmin #FFF044FF;}
+	#mainMenu {display: flex; flex-direction: column; justify-content: center; align-items: center;
+		gap: 3vmin; border-radius: 10px; padding: 2vmin;}
+	button {background: #0C5533FF; border-radius: 9999px; border: #0A9534FF 1vmin solid; padding: 3vmin;
+		color: transparent; font-weight: bold; font-size: 4vmin; cursor: pointer; width: 40vmin; transition: 100ms;}
+	button:hover {filter: brightness(1.25); scale: 1.1;}
+	button>* {color: transparent; background: linear-gradient(0deg, var(--gb), var(--ob)); background-clip: text;
+		text-shadow: 0px 0px 2vmin var(--gl);}
+	.thin {padding: 1vmin;}
+	#levels {display: none; width: 120vmin; height: 80vmin; background: #000000FF; position: absolute; top: 50%; left: 50%;
+		transform: translate(-50%, -50%); border-radius: 10px; padding: 2vmin; overflow-y: auto;}
+	#game {display: none; height: 100vmin; gap: 2vmin;}
+	#hero {display: flex; flex-direction: row; flex-wrap: wrap; align-content: flex-start; justify-content: center;
+		font-size: 2vmin; gap: 1vmin;}
+	#hero>* {width: 20vmin; height: 20vmin; border: 1px solid black; border-radius: 5px; text-align: center;
+		display: flex; align-content: space-between; flex-wrap: wrap; justify-content: center; background-size: contain;
+		background-repeat: no-repeat; background-position: center;}
+	#board {display: block; position: relative; width: 100%; align-self: anchor-center; background-size: contain; background-repeat: no-repeat; background-position: center;}
+	.editor {display: none; top: 10%; left: 0; align-items: center; flex-direction: column; gap: 2vmin; width: 20vmin;}
+	#opts {position: absolute; z-index: 1; bottom: 1vmin; left: 1vmin; height: 13vmin; width: 13vmin; padding: 0;
+		border-radius: 50%; background: #4F266BFF; border: #7F2984FF 1vmin solid; font-size: 2.5vmin; cursor: pointer;}
+	#opts>* {background: linear-gradient(0, var(--pb), var(--ob)); background-clip: text;
+		text-shadow: 0px 0px 1vmin var(--pl);}
+	#pause {display: none;}
+	.flex {display: flex; gap: 0vmin;}
+	.ball {position:relative; width: 1.75%; height: 1.75%; border-radius: 50%; top: 50%; left: 50%;
+		border: black .1vmin solid; box-shadow: black 0 0 3px .1px; transform: translate(-50%, -50%);
+		background: linear-gradient(170deg, #477898FF 15%, #668B96FF 45%, #804200FF, #977B1FFF 60%, #D4B647FF 95%);}
+	.peg {position:absolute; width: 2%; height: 2%; border-radius: 50%; border: var(--bb) solid; transform: translate(-50%, -50%);
+		box-shadow: black 0 0 1px .5px; z-index: 2; background: radial-gradient(circle at 40% 30%, var(--bl), var(--b) 30%);}
+	.orange {border-color: var(--ob); background: radial-gradient(circle at 40% 30%, var(--ol), var(--o) 30%);}
+	.green {border-color: var(--gb); background: radial-gradient(circle at 40% 30%, var(--gl), var(--g) 30%);}
+	.purple {border-color: var(--pb); background: radial-gradient(circle at 40% 30%, var(--pl), var(--p) 30%);}
+	.red {border-color: var(--rb); background: radial-gradient(circle at 40% 30%, var(--rl), var(--r) 30%);}
+	.lit {filter: brightness(1.3) saturate(1.5); box-shadow: inset rgb(200,200,200) 0px 0px 15px 0px;}
+	.lit.orange {border-color: #AC5340;}
+	.square {border-radius: 15%; width: 3.9%; background-size: 5% 150%; background-position-y: 25%;}
+	.wall {position: absolute; z-index: 1; background-color: black; transform: translate(-50%, -50%);}
+	.orb {border-radius: 50%;}
+	.portal {}
+	canvas {position: absolute; top: 0; left: 0; width: 100%; height: 100%;}
+	@media (max-width: 500px) {}
+</style>
+</head>
+<body>
+	<div id=mainMenu>
+		<div class=flex><h1>P</h1><h1>l</h1><h1>e</h1><h1>g</h1><h1>g</h1><h1>l</h1><h1>e</h1></div>
+		<div class=flex><p>J</p><p>A</p><p>V</p><p>A</p><p>S</p><p>C</p><p>R</p><p>I</p><p>P</p><p>T</p></div>
+		<button><div>Start Adventure</div></button>
+		<button onclick="levels.style.display = 'block';"><div>Choose Level</div></button>
+		<button onclick=openEditor()><div>Build-A-Level</div></button>
+		<div id=levels>
+		</div>
+	</div>
+	<div id=game>
+		<div id=hero>
+			<div id=borne><div>Jason Bjorne</div><div>Has perfected the art curved shots</div></div>
+			<div id=timmy><div>Timmy</div><div>Accidentally creats a dark mattered clone</div></div>
+			<div id=dog><div>Dog Tutu</div><div>Trained to bounce the ball back up when he can</div></div>
+			<div id=splayd><div>Splayd</div><div>Explosive packed balls, waiting for the fuse</div></div>
+			<div id=gemini><div>Gemini</div><div>Twin stars that push the ball back into play</div></div>
+			<div id=li><div>Listreet</div><div>Falls through a portal... sometimes</div></div>
+			<div id=rosy><div>Rosy</div><div>Vinespread destruction from peg to peg</div></div>
+			<div id=sock><div>Magic Sock</div><div>The seemingly omnicient wheel spinner</div></div>
+			<div id=frost><div>Madam Frost</div><div>Ice storm shatters all in its path</div></div>
+			<div id=hao><div>Apprentice Hao</div><div>Blade guides the shot, a sure strike finds the mark</div></div>
+			<div id=terra><div>Terra</div><div>A tree grows connecting and destroying</div></div>
+			<div id=solla><div>Solla</div><div>Gamma particles phase through reality</div></div>
+			<div id=doug><div>BaldBald</div><div>Jack of None, Master of None</div></div>
+			<div id=chair><div>Chair</div><div>True Grand Master</div></div>
+		</div>
+		<div id=editor class=editor>
+			<button onclick=loadImage() style='padding:1vmin; width: 15vmin;'><div>Pic</div></button>
+			<button style='padding:3vmin; width: 15vmin;' onclick=addPeg()>
+				<div class=peg style='height: 3%; margin-left: 3.5vmin'></div>
+			</button>
+			<button style='padding:1vmin; width: 15vmin;' onclick=addObj()><div>Obj</div></button>
+			<button style='padding:1vmin; width: 15vmin;' onclick=drawPegLine()><div>Draw</div></button>
+			<button style='padding:1vmin; width: 15vmin;' onclick='removePeg(Array.isArray(selected) ? selected : [selected])'><div>Delete</div></button>
+			<button style='padding:1vmin; width: 15vmin;' onclick=saveLevel()><div>Fin</div></button>
+			<button onclick="board.innerHTML='<canvas id=canv></canvas>'; ctx = canv.getContext('2d')" style='padding:1vmin; width: 15vmin;'><div>Clear</div></button>
+		</div>
+		<div id=board><canvas id=canv></canvas></div>
+		<div id=editor2 class=editor oninput='editPeg(-1)' onchange='editPeg(-1)'>
+			<div id=levelEdit>
+				<div>Hero <input type=range id=hr min=0 max=14 value=0></div>
+				<div>Orange <input type=range id=or min=1 max=1000 value=10></div>
+				<div>Green <input type=range id=gr min=0 max=10 value=2></div>
+				<div>Gravity <input type=range id=grav min=-100 max=100 value=20></div>
+				<div>Launch Speed <input type=range id=ls min=1 max=100 value=10></div>
+				<div>Ball Size <input type=range id=bs min=1 max=10 value=2></div>
+			</div>
+			<div id=pegEdit>
+				<div id=objProp>
+					<div>Texture <input type=text id=oTx></div>
+					<div>Type <input type=range id=oTy max=2 value=0></div>
+					<div>SizeX <input type=range id=oSzX max=100 min=1 value=10></div>
+					<div>SizeY <input type=range id=oSzY max=100 min=1 value=10></div>
+					<div>Portal/Bouncy <input type=range id=oBo max=25 value=0></div>
+				</div>
+				<div id=pegProp>
+					<div>Forced: <input type=range id=forced min=0 max=4></div>
+					<div>Square <input type=range id=square min=0 max=1></div>
+				</div>
+				<div>Angle <input type=range id=rotate min=0 max=360></div>
+				<div>Loop Back <input type=range id=loop min=0 max=1></div>
+				<div>DX <input type=number id=deltaX min=-100 max=100 step=.1></div>
+				<div>DY <input type=number id=deltaY min=-100 max=100 step=.1></div>
+				<div>Radius <input type=number id=rad min=0 max=100 step=.1></div>
+				<div>Center <input type=number id=cent min=-360 max=360 step=45></div>
+				<div>Cycles <input type=number id=cyc min=1 max=30></div>
+				<textarea id=cust placeholder='Custom Enrty x(t) | y(t)'></textarea>
+				<div>Speed <input type=number id=speed min=.01 max=10 step=0.01 value=1></div>
+				<div>Play % <input type=range id=prev min=0 max=100></div>
+			</div>
+			<button class=thin onclick=demo() style='width: 20vmin' id=demoPlay><div>Play</div></button>
+		</div>
+	</div>
+	<button id=opts onclick=pausa()><div>Options</div></button>
+	<div id=pause></div>
+</body>
+<script>
+	let pegs = [], walls = [], selected = null, io = {}, playing, balls = [], ctx = canv.getContext('2d');
+	document.addEventListener('contextmenu', (e) => {e.preventDefault();});
+	document.addEventListener('keyup', (e) => {io[e.key] = false;});
+	document.addEventListener('keydown', (e) => {
+		io[e.key] = true;
+		if (editor.style.display != 'none') {
+			switch (e.key) {
+				case 'a': addPeg(); break;
+				case 'w': addObj(); break;
+				case 'd': drawPegLine(); break;
+				case 's': io.straightLine = 1; drawPegLine(); break;
+				case 'c': io.drawCircle = 1; drawPegLine(); break;
+				case 'x': removePeg(Array.isArray(selected) ? selected : [selected]); break;
+			}
+		}
+	});
+	board.onmousedown = e => {
+		if ((e.target == board || e.target == canv) && !io.drawLine && !e.shiftKey) {selected = null; editPeg(-1);}
+		if (io.drawLine) {
+			io.drawDown = 1; io.drawPath = [[io.x, io.y]];
+			canv.width = board.clientWidth; canv.height = board.clientHeight;
+			ctx.lineWidth = 6; ctx.strokeStyle = "#000"; ctx.beginPath(); ctx.moveTo(io.x, io.y);
+		}
+		else if (e.shiftKey && editor.style.display != 'none') io.selStart = [io.x, io.y];
+	};
+	board.onmousemove = e => {
+		let r = board.getBoundingClientRect();
+		io.x = e.clientX - r.left; io.y = e.clientY - r.top;
+		if (io.drawDown) {
+			if (io.drawCircle) {
+				canv.width = board.clientWidth; canv.height = board.clientHeight;
+				ctx.lineWidth = 6; ctx.strokeStyle = "#000";
+				let r = Math.hypot(io.x-io.drawPath[0][0], io.y-io.drawPath[0][1]);
+				ctx.beginPath(); ctx.arc(io.drawPath[0][0], io.drawPath[0][1], r, 0, Math.PI*2); ctx.stroke();
+			}
+			else { ctx.lineTo(io.x, io.y); ctx.stroke(); }
+			if (Math.hypot(io.x - io.drawPath.at(-1)[0], io.y - io.drawPath.at(-1)[1]) >= 2) io.drawPath.push([io.x, io.y]);
+		} else if (io.selStart) {
+			canv.width = board.clientWidth; canv.height = board.clientHeight;
+			ctx.clearRect(0, 0, canv.width, canv.height); ctx.strokeStyle = '#FFF'; ctx.lineWidth = 2;
+			ctx.strokeRect(io.selStart[0], io.selStart[1], io.x - io.selStart[0], io.y - io.selStart[1]);
+		}
+		if (io.dragList) io.dragList.forEach(id => {
+			let p = (id.includes('peg') ? pegs : walls)[id.replace(/\D/g, '')];
+			p.x = p.x0 = (io.x/board.clientWidth*100) + p.offX;
+			p.y = p.y0 = (io.y/board.clientHeight*100) + p.offY;
+			window[id].style.left = p.x+'%'; window[id].style.top = p.y+'%';
+		});
+	};
+	board.onmouseup = e => {
+		if (io.drawDown) {
+			io.drawDown = 0; let pts = io.drawPath;
+			if (io.drawCircle) {
+				let [cx, cy] = pts[0], r = Math.hypot(pts.at(-1)[0]-cx, pts.at(-1)[1]-cy);
+				pts = []; for (let a=-.2; a<=Math.PI*2.3; a+=.1) pts.push([cx+Math.cos(a)*r, cy+Math.sin(a)*r]);
+			}
+			if (pts.length >= 2) {
+				let sm = io.straightLine ? [pts[0], pts.at(-1)] : pts.map((p, i) => (i == 0 || i == pts.length - 1) ? p : [(pts[i-1][0] + p[0] * 2 + pts[i+1][0]) / 4, (pts[i-1][1] + p[1] * 2 + pts[i+1][1]) / 4]);
+				let sp = [sm[0]], gap = board.clientWidth * .035 + Math.min(window.innerWidth, window.innerHeight) * .01, r = 0;
+				for (let i = 1; i < sm.length; i++) {
+					let [x0, y0] = sm[i-1], [x1, y1] = sm[i], dx = x1-x0, dy = y1-y0, s = Math.hypot(dx, dy);
+					while (r + s >= gap) {
+						let t = (gap - r) / s; x0 += dx * t; y0 += dy * t; sp.push([x0, y0]);
+						dx = x1 - x0; dy = y1 - y0; s = Math.hypot(dx, dy); r = 0;
+					}
+					r += s;
+				}
+				if (Math.hypot(sm.at(-1)[0] - sp.at(-1)[0], sm.at(-1)[1] - sp.at(-1)[1]) > gap * .35) sp.push(sm.at(-1));
+				selected = [];
+				sp.forEach((p, i) => {
+					let el = document.createElement("div"), a = 0, b = 0, t = 0, p0 = sp[i-1] || p, p2 = sp[i+1] || p;
+					el.className = "peg square"; a = Math.atan2(p2[1] - p0[1], p2[0] - p0[0]) * 180 / Math.PI;
+					if (i > 0 && i < sp.length - 1) {
+						b = Math.abs((Math.atan2(p2[1]-p[1], p2[0]-p[0]) - Math.atan2(p[1]-p0[1], p[0]-p0[0])) * 180 / Math.PI);
+						if (b > 180) b = 360 - b;
+						t = (p[0]-p0[0]) * (p2[1]-p[1]) - (p[1]-p0[1]) * (p2[0]-p[0]);
+					}
+					if (b > 100) el.className = "peg";
+					el.id = "peg" + pegs.length;
+					el.onclick = e => handlePegClick(el, e);
+					el.onmousedown = e => handlePegDown(el, e);
+					if (el.className == "peg square" && b < 180) {
+						let clipAmount = b/2.25;
+						el.style.clipPath = t > 0 ? `polygon(0 0,100% 0,${100-clipAmount}% 100%,${clipAmount}% 100%)` : `polygon(${clipAmount}% 0,${100-clipAmount}% 0,100% 100%,0 100%)`;
+						let perpAngle = (a + (t > 0 ? -90 : 90)) * Math.PI / 180;
+						if (b>15) {
+							el.style.borderLeftWidth = el.style.borderRightWidth = "1vmin";
+							el.style.borderRadius = "25%";
+							p[0] -= Math.cos(perpAngle) *1.33;
+							p[1] -= Math.sin(perpAngle) *1.33;
+						}
+					}
+					el.style.left = (p[0] / board.clientWidth * 100) + "%"; 
+					el.style.top = (p[1] / board.clientHeight * 100) + "%";
+					el.style.transform = `translate(-50%,-50%) rotate(${a}deg)`;
+					board.appendChild(el);
+					selected.push(el.id);
+					pegs.push({x: 0, x0: p[0]/board.clientWidth*100, y: 0, y0: p[1]/board.clientHeight*100, f: 0, q: el.className == "peg square" ? 1 : 0, s: 1, r: a, t: 0, l: 0, lp: 0, dx: 0, dy: 0, rd: 0, th: 0, cy: 1, cust: ""});
+				});
+				editPeg(selected[0]);
+			}
+			ctx.clearRect(0, 0, canv.width, canv.height);
+			io.drawLine = io.straightLine = io.drawCircle = 0;
+		} else if (io.selStart) {
+			let minX = Math.min(io.selStart[0], io.x), maxX = Math.max(io.selStart[0], io.x);
+			let minY = Math.min(io.selStart[1], io.y), maxY = Math.max(io.selStart[1], io.y);
+			selected = [];
+			pegs.forEach((p, i) => {
+				let el = window['peg'+i]; if (!el) return;
+				let r = el.getBoundingClientRect(), b = board.getBoundingClientRect();
+				let is = r.left-b.left >= minX && r.left-b.left <= maxX && r.top-b.top >= minY && r.top-b.top <= maxY;
+				el.classList.toggle('lit', is); if (is) selected.push(el.id);
+			});
+			editPeg(selected[0] || -1);
+			io.selStart = null; ctx.clearRect(0, 0, canv.width, canv.height);
+		}
+		io.dragList = null;
+	};
+	function pausa() {
+		pause.style.display = pause.style.display == 'block' ? 'none' : 'block';
+		if (playing) demo();
+	}
+	function openEditor() {
+		mainMenu.style.display = hero.style.display = 'none';
+		game.style.display = editor.style.display = editor2.style.display = 'flex';
+		editPeg(-1);
+		loadImage();
+	}
+	function loadImage() {
+		// let url = prompt('Enter image URL:');
+		let url = 'https://wallpaperaccess.com/full/1730281.jpg';
+		let img = new Image();
+		// img.onload = function() {board.style.aspectRatio = `${img.naturalWidth} / ${img.naturalHeight}`;};
+		img.onload = function() {board.style.aspectRatio = `1/1`;};
+		img.src = url;
+		board.style.backgroundImage = `url(${url})`;
+		board.innerHTML = '<canvas id=canv></canvas>';
+		ctx = canv.getContext('2d');
+	}
+	function addPeg() {
+		let peg = document.createElement('div'), x = io.x/board.clientWidth*100, y = io.y/board.clientHeight*100;
+		peg.className = 'peg'; peg.id = 'peg'+pegs.length;
+		peg.onclick = e => handlePegClick(peg, e);
+		peg.onmousedown = e => handlePegDown(peg, e);
+		board.appendChild(peg);
+		pegs.push({x, x0:x, y, y0:y, f:0, q:0, s:1, r:0, t:0, l:0, lp:0, dx:0, dy:0, rd:0, th:0, cy:1, cust:''});
+		peg.style.left = x+'%'; peg.style.top = y+'%';
+		peg.click();
+	}
+	function addObj() {
+		let obj = document.createElement('div'), x = io.x/board.clientWidth*100, y = io.y/board.clientHeight*100;
+		obj.className = 'wall'; obj.id = 'wall'+walls.length;
+		obj.onclick = e => handlePegClick(obj, e); obj.onmousedown = e => handlePegDown(obj, e);
+		board.appendChild(obj);
+		walls.push({x, x0:x, y, y0:y, s:1, r:0, t:0, l:0, lp:0, dx:0, dy:0, rd:0, th:0, cy:1, cust:'', otx: '', oty: 0, osx: 10, osy: 10, obo: 0});
+		obj.style.left = x+'%'; obj.style.top = y+'%';
+		obj.style.width = obj.style.height = '10%';
+		obj.click();
+	}
+	function handlePegClick(peg, e) {
+		if (e.shiftKey) {
+			if (!Array.isArray(selected)) selected = [selected];
+			if (selected.includes(peg.id)) selected = selected.filter(x => x != peg.id);
+			else selected.push(peg.id);
+		} else if (!(Array.isArray(selected) && selected.includes(peg.id))) selected = peg.id;
+		editPeg(peg.id);
+	}
+	function handlePegDown(peg, e) {
+		if (e.shiftKey) return;
+		io.dragList = (Array.isArray(selected) && selected.includes(peg.id)) ? selected : [peg.id];
+		io.dragList.forEach(id => {
+			let p = (id.includes('peg') ? pegs : walls)[id.replace(/\D/g, '')];
+			p.offX = p.x0 - (io.x / board.clientWidth * 100);
+			p.offY = p.y0 - (io.y / board.clientHeight * 100);
+		});
+	}
+	function removePeg(id) {
+		if (id) {
+			let pegList = Array.isArray(id) ? id : [id];
+			for (let pegId of pegList) {
+				window[pegId].remove();
+				let isPeg = pegId.includes('peg');
+				delete (isPeg ? pegs : walls)[pegId.replace(/\D/g, '')];
+			}
+			selected = null; editPeg(-1);
+		}
+	}
+	function drawPegLine() {
+		canv.width = board.clientWidth; canv.height = board.clientHeight;
+		ctx.clearRect(0, 0, canv.width, canv.height);
+		io.drawLine = 1; io.drawDown = 0; io.drawPath = [];
+	}
+	function editPeg(e) {
+		let s = (Array.isArray(selected) ? selected : (selected ? [selected] : [])).filter(x => x);
+		pegEdit.style.display = s.length ? 'block' : 'none';
+		levelEdit.style.display = s.length ? 'none' : 'block';
+		if (s.length) {
+			let isPeg = s[0].includes('peg');
+			pegProp.style.display = isPeg ? 'block' : 'none';
+			objProp.style.display = isPeg ? 'none' : 'block';
+		}
+		[pegs, walls].forEach((arr, j) => arr.forEach((_, i) => {
+			let id = (j ? 'wall' : 'peg') + i; if (window[id]) window[id].classList.toggle('lit', s.includes(id));
+		}));
+		let fields = [
+			['f', forced], ['q', square], ['r', rotate],['l', loop], ['s', speed],
+			['dx', deltaX], ['dy', deltaY], ['rd', rad], ['th', cent], ['t', prev], ['cy', cyc], ['cust', cust],
+			['otx', oTx], ['oty', oTy], ['osx', oSzX], ['osy', oSzY], ['obo', oBo]
+		];
+		if (typeof e == 'string') {
+			let isPeg = e.includes('peg'), p = (isPeg ? pegs : walls)[e.replace(/\D/g, '')];
+			if (p) fields.forEach(f => f[1].value = p[f[0]] || 0);
+		} else {
+			let list = s, ch = fields.find(f => f[1] == window.event?.target);
+			if (!ch) return;
+			for (let id of list) {
+				let isPeg = id.includes('peg'), p = (isPeg ? pegs : walls)[id.replace(/\D/g, '')];
+				if (!p) continue;
+				p[ch[0]] = (['cust', 'otx'].includes(ch[0]) ? ch[1].value : parseFloat(ch[1].value));
+				let el = window[id];
+				if (el.classList.contains('peg')) {
+					el.classList.remove('orange', 'green', 'purple', 'red');
+					if (p.f > 0) el.classList.add(['orange', 'green', 'purple', 'red'][p.f-1]);
+					el.classList.toggle('square', p.q != 0);
+				} else {
+					el.className = ['wall', 'orb', 'portal'][p.oty] || 'wall';
+					el.style.width = p.osx+'%'; el.style.height = p.osy+'%';
+					el.style.background = p.otx ? p.otx : 'black';
+				}
+				el.classList.toggle('lit', s.includes(id));
+				el.style.transform = `translate(-50%, -50%) rotate(${p.r}deg)`;
+				let pos = calc(p); el.style.left = pos.x+'%'; el.style.top = pos.y+'%';
+			}
+		}
+		canv.width = board.clientWidth; canv.height = board.clientHeight;
+		ctx.clearRect(0, 0, canv.width, canv.height);
+		if (s.length) {
+			let isPeg = s[0].includes('peg'), previewPeg = (isPeg ? pegs : walls)[s[0].replace(/\D/g, '')];
+			if (previewPeg) for (let t=0; t<100; t+=.1) {
+				let g = calc({...previewPeg, t}); ctx.fillRect(g.x/100*canv.width, g.y/100*canv.height, 2, 2);
+			}
+		}
+	}
+	function saveLevel() {
+		let data = {pegs: pegs};
+		prompt('Copy this JSON to share your level!', JSON.stringify(data));
+	}
+	function calc(e) {
+		if (e.cust != '') {let t = e.t; e.x = e.x0 + eval(e.cust.split('\n')[0]); e.y = e.y0 + eval(e.cust.split('\n')[1]);}
+		else {
+			e.x = e.x0 + Math.cos(e.th*Math.PI/180)*e.rd + Math.cos((e.th+180)*Math.PI/180 + e.t*2*Math.PI*e.cy/100)*e.rd + e.dx*e.t/100;
+			e.y = e.y0 + Math.sin(e.th*Math.PI/180)*e.rd + Math.sin((e.th+180)*Math.PI/180 + e.t*2*Math.PI*e.cy/100)*e.rd + e.dy*e.t/100;
+		}
+		return {x: e.x, y: e.y};
+	}
+	function isCollide(obj1, obj2, e) {
+		if (e == 0) return Math.abs(obj1.x - obj2.x) < (obj1.sz + obj2.osx)/2 && Math.abs(obj1.y - obj2.y) < (obj1.sz + obj2.osy)/2;
+		else if (e == 1) return Math.abs(obj1.x - obj2.x) < (obj1.sz + 5)/2 && Math.abs(obj1.y - obj2.y) < (obj1.sz + 2.5)/2;
+		else if (e == 2) return Math.abs(obj1.x - obj2.x) < (obj1.sz + 2.5)/2 && Math.abs(obj1.y - obj2.y) < (obj1.sz + 2.5)/2;
+		return Math.hypot(obj1.x - obj2.x, obj1.y - obj2.y) < (obj1.sz + obj2.sz)/2;
+		//aww snap, forgor about rotated pieces and sliding along flats
+	}
+	function demo() {
+		if (playing) {
+			clearInterval(playing);
+			playing = null;
+			demoPlay.children[0].innerText = 'Play';
+			window.baal.remove();
+			balls = [];
+			for (let p of pegs) {if(!p) continue; p.t = 0; p.lp = 0;}
+			start();
+		} else {
+			playing = setInterval(start, 10);
+			demoPlay.children[0].innerText = 'Stop';
+			ctx.clearRect(0, 0, canv.width, canv.height);
+			let baal = document.createElement('div');
+			baal.className = 'ball';
+			baal.id = 'baal';
+			board.appendChild(baal);
+			baal.style.left = '50%';
+			baal.style.top = '0%';
+			balls.push({x:50, y:0, dx:0, dy:0, sz: 1.75});
+		}
+	}
+	function start() {
+		if (editor.style.display == 'none') {
+			balls = [];
+		}
+		let b = balls[0];
+		for (let i in pegs) {
+			let peg = document.getElementById('peg'+i), p = pegs[i];
+			if (!p.l || !p.lp) p.t += p.s;
+			else p.t -= p.s;
+			if (p.t >= 100 && !p.l) p.t = 0;
+			else if (p.l && (p.t < 0 || p.t > 100)) p.lp = !p.lp;
+			p = calc(p);
+			peg.style.left = `${p.x}%`;
+			peg.style.top = `${p.y}%`;
+			if (p.r >= 360) peg.style.transform = `translate(-50%, -50%) rotate(${p.r++}deg)`;
+			if (isCollide(b, p, ((pegs[i].q==1) ? 1 : 2))) {
+				let angle = Math.atan2(b.y-p.y, b.x-p.x);
+				b.dx = Math.cos(angle)*2;
+				b.dy *= -.85;
+				peg.classList.add('lit');
+			}
+		}
+		for (let i in walls) {
+			let wall = document.getElementById('wall'+i), w = walls[i];
+			if (!w.l || !w.lp) w.t += w.s;
+			else w.t -= w.s;
+			if (w.t >= 100 && !w.l) w.t = 0;
+			else if (w.l && (w.t < 0 || w.t > 100)) w.lp = !w.lp;
+			w = calc(w);
+			wall.style.left = `${w.x}%`;
+			wall.style.top = `${w.y}%`;
+			if (isCollide(b, walls[i], 0)) {
+				let angle = Math.atan2(b.y-w.y, b.x-w.x);
+				b.dx = Math.cos(angle)*2;
+				b.dy *= -.85;
+			}
+		}
+		if (playing) {
+			b.x += b.dx;
+			b.dy += .01;
+			b.y += b.dy;
+			if (b.y > 100) b.y = 0;
+			if (b.x < 0 || b.x > 100) b.dx *= -1;
+			if (b.dy > 1) b.dy = 1;
+			baal.style.left = `${b.x}%`;
+			baal.style.top = `${b.y}%`;
+		}
+		
+	}
+
+</script>
